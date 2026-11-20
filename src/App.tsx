@@ -3,6 +3,7 @@ import { AnimatePresence, MotionConfig } from 'motion/react'
 import { Toaster, toast } from 'sonner'
 import { AppShell } from '@/components/AppShell'
 import { ComposeDialog } from '@/components/ComposeDialog'
+import { PostDetailDialog } from '@/components/PostDetailDialog'
 import { StoryViewer } from '@/components/StoryViewer'
 import { useHashRoute } from '@/hooks/useHashRoute'
 import { usePosts } from '@/hooks/usePosts'
@@ -25,6 +26,8 @@ export default function App() {
   const [draft, setDraft] = useState<string | null>(null)
   const [postDraft, setPostDraft] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [openPostId, setOpenPostId] = useState<string | null>(null)
+  const openPost = openPostId ? posts.find((p) => p.id === openPostId) : undefined
 
   const handleAdd = useCallback(async (file: File) => {
     setUploading(true)
@@ -114,6 +117,8 @@ export default function App() {
     [updatePost],
   )
 
+  const handleClosePost = useCallback(() => setOpenPostId(null), [])
+
   const handleClose = useCallback(() => setOpenIndex(null), [])
 
   const handleDelete = useCallback(
@@ -142,8 +147,10 @@ export default function App() {
             profile={profile}
             onSave={updateProfile}
             stories={stories}
+            posts={posts}
             viewedIds={viewedIds}
             onOpenStory={setOpenIndex}
+            onOpenPost={setOpenPostId}
           />
         ) : (
           <HomePage
@@ -175,6 +182,18 @@ export default function App() {
 
       <AnimatePresence>
         {draft && <ComposeDialog image={draft} onPost={handlePost} onCancel={handleCancelDraft} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {openPost && (
+          <PostDetailDialog
+            post={openPost}
+            profile={profile}
+            onClose={handleClosePost}
+            onDelete={handleDeletePost}
+            onUpdate={handleUpdatePost}
+          />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>

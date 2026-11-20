@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/Avatar'
+import { PostGrid } from '@/components/PostGrid'
 import { StoryGrid } from '@/components/StoryGrid'
+import { cn } from '@/utils/cn'
 import {
   MAX_BIO_LENGTH,
   MAX_NAME_LENGTH,
@@ -9,20 +11,34 @@ import {
   sanitizeUsername,
   type Profile,
 } from '@/utils/profile'
-import type { Story } from '@/types'
+import type { Post, Story } from '@/types'
+
+type Tab = 'posts' | 'saved' | 'stories'
 
 interface ProfilePageProps {
   profile: Profile
   onSave: (profile: Profile) => boolean
   stories: Story[]
+  posts: Post[]
   viewedIds: Set<string>
   onOpenStory: (index: number) => void
+  onOpenPost: (id: string) => void
 }
 
 const inputClass =
   'w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-ig-pink focus:outline-none'
 
-export function ProfilePage({ profile, onSave, stories, viewedIds, onOpenStory }: ProfilePageProps) {
+export function ProfilePage({
+  profile,
+  onSave,
+  stories,
+  posts,
+  viewedIds,
+  onOpenStory,
+  onOpenPost,
+}: ProfilePageProps) {
+  const [tab, setTab] = useState<Tab>('posts')
+  const savedPosts = posts.filter((p) => p.saved)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Profile>(profile)
 
@@ -58,9 +74,14 @@ export function ProfilePage({ profile, onSave, stories, viewedIds, onOpenStory }
             )}
           </div>
 
-          <p className="mt-3 text-sm">
-            <span className="font-semibold">{stories.length}</span>{' '}
-            {stories.length === 1 ? 'active story' : 'active stories'}
+          <p className="mt-3 flex gap-5 text-sm">
+            <span>
+              <span className="font-semibold">{posts.length}</span> {posts.length === 1 ? 'post' : 'posts'}
+            </span>
+            <span>
+              <span className="font-semibold">{stories.length}</span>{' '}
+              {stories.length === 1 ? 'active story' : 'active stories'}
+            </span>
           </p>
 
           {!editing && (
@@ -142,13 +163,53 @@ export function ProfilePage({ profile, onSave, stories, viewedIds, onOpenStory }
       )}
 
       <div className="border-t border-neutral-800">
-        {stories.length === 0 ? (
-          <p className="px-6 py-16 text-center text-sm text-neutral-400">
-            No active stories. Share one from the Home page.
-          </p>
-        ) : (
-          <StoryGrid stories={stories} viewedIds={viewedIds} onOpen={onOpenStory} />
-        )}
+        <div role="tablist" aria-label="Profile content" className="flex justify-center gap-10">
+          {(
+            [
+              ['posts', 'Posts'],
+              ['saved', 'Saved'],
+              ['stories', 'Stories'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              id={`tab-${id}`}
+              aria-selected={tab === id}
+              aria-controls="profile-panel"
+              onClick={() => setTab(id)}
+              className={cn(
+                '-mt-px border-t py-3 text-xs font-semibold tracking-wider uppercase transition',
+                'focus-visible:outline-2 focus-visible:outline-ig-pink',
+                tab === id ? 'border-white text-white' : 'border-transparent text-neutral-500 hover:text-neutral-300',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div role="tabpanel" id="profile-panel" aria-labelledby={`tab-${tab}`}>
+          {tab === 'posts' && (
+            <PostGrid posts={posts} emptyMessage="No posts yet. Use Create to share one." onOpen={onOpenPost} />
+          )}
+          {tab === 'saved' && (
+            <PostGrid
+              posts={savedPosts}
+              emptyMessage="No saved posts. Tap the bookmark on a post to save it."
+              onOpen={onOpenPost}
+            />
+          )}
+          {tab === 'stories' &&
+            (stories.length === 0 ? (
+              <p className="px-6 py-16 text-center text-sm text-neutral-400">
+                No active stories. Share one from the Home page.
+              </p>
+            ) : (
+              <StoryGrid stories={stories} viewedIds={viewedIds} onOpen={onOpenStory} />
+            ))}
+        </div>
       </div>
     </main>
   )
