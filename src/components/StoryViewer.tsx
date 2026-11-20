@@ -1,0 +1,215 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion, type PanInfo } from 'motion/react'
+import { X } from 'lucide-react'
+import { STORY_DURATION_MS, type Story } from '@/types'
+import { cn } from '@/utils/cn'
+
+interface StoryViewerProps {
+  stories: Story[]
+  startIndex: number
+  onClose: () => void
+  onView: (id: string) => void
+}
+
+const SWIPE_DISTANCE = 60
+const SWIPE_VELOCITY = 500
+const CLOSE_DISTANCE = 120
+
+export function StoryViewer({ stories, startIndex, onClose, onView }: StoryViewerProps) {
+  const [index, setIndex] = useState(startIndex)
+  const [progress, setProgress] = useState(0)
+
+  const safeIndex = Math.min(index, stories.length - 1)
+  const story: Story | undefined = stories[safeIndex]
+  const storyId = story?.id
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const pausedRef = useRef(false)
+  const elapsedRef = useRef(0)
+  const indexRef = useRef(safeIndex)
+  const countRef = useRef(stories.length)
+  indexRef.current = safeIndex
+  countRef.current = stories.length
+
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+
+  /** Moves by delta stories. Past the last story closes; before the first restarts it. */
+  const go = useCallback((delta: number) => {
+    const target = indexRef.current + delta
+    if (target >= countRef.current) {
+      closeRef.current()
+    } else if (target < 0) {
+      elapsedRef.current = 0
+    } else {
+      setIndex(target)
+    }
+  }, [])
+
+  const goRef = useRef(go)
+  goRef.current = go
+
+  // Close when every story has expired while viewing.
+  useEffect(() => {
+    if (stories.length === 0) onClose()
+  }, [stories.length, onClose])
+
+  // Mark as viewed.
+  useEffect(() => {
+    if (storyId) onView(storyId)
+  }, [storyId, onView])
+
+  // Progress timer + auto-advance.
+  useEffect(() => {
+    if (!storyId) return
+    elapsedRef.current = 0
+    setProgress(0)
+    let last = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      // Cap dt so a throttled/hidden tab doesn't skip stories.
+      const dt = Math.min(now - last, 100)
+      last = now
+      if (!pausedRef.current) elapsedRef.current += dt
+      const p = Math.min(1, elapsedRef.current / STORY_DURATION_MS)
+      setProgress(p)
+      if (p >= 1) {
+        goRef.current(1)
+        return
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [storyId])
+
+  // Keyboard controls.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') goRef.current(1)
+      else if (e.key === 'ArrowLeft') goRef.current(-1)
+      else if (e.key === 'Escape') closeRef.current()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // Lock page scroll while open.
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [])
+
+  const pause = () => {
+    pausedRef.current = true
+  }
+  const resume = () => {
+    pausedRef.current = false
+  }
+
+  const handleDragEnd = (_: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => {
+    resume()
+    const { offset, velocity } = info
+    const vertical = Math.abs(offset.y) > Math.abs(offset.x)
+    if (vertical) {
+      if (offset.y > CLOSE_DISTANCE || velocity.y > SWIPE_VELOCITY) onClose()
+      return
+    }
+    if (offset.x < -SWIPE_DISTANCE || velocity.x < -SWIPE_VELOCITY) go(1)
+    else if (offset.x > SWIPE_DISTANCE || velocity.x > SWIPE_VELOCITY) go(-1)
+  }
+
+  const handleTap = (event: MouseEvent | TouchEvent | PointerEvent, info: { point: { x: number } }) => {
+    if ((event.target as HTMLElement | null)?.closest('button')) return
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    go(info.point.x < rect.left + rect.width * 0.33 ? -1 : 1)
+  }
+
+  if (!story) return null
+
+  return (
+    <motion.div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Story viewer"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black sm:bg-black/90 sm:backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <motion.div
+        ref={containerRef}
+        className={cn(
+          'relative h-full w-full touch-none overflow-hidden bg-neutral-900 select-none',
+          'sm:h-[calc(100dvh-2rem)] sm:max-h-[920px] sm:w-auto sm:aspect-[9/16] sm:rounded-2xl sm:shadow-2xl',
+        )}
+        initial={{ scale: 0.92, y: 24 }}
+        animate={{ scale: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+        drag
+        dragDirectionLock
+        dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
+        dragElastic={{ top: 0, bottom: 0.6, left: 0.25, right: 0.25 }}
+        onPointerDown={pause}
+        onPointerUp={resume}
+        onPointerCancel={resume}
+        onDragStart={pause}
+        onDragEnd={handleDragEnd}
+        onTap={handleTap}
+      >
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.img
+            key={story.id}
+            src={story.image}
+            alt=""
+            draggable={false}
+            className="absolute inset-0 size-full object-contain"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          />
+        </AnimatePresence>
+
+        {/* Top gradient for readability */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />
+
+        {/* Progress bars */}
+        <div className="safe-top pointer-events-none absolute inset-x-0 top-0 px-3 pt-3">
+          <div className="flex gap-1" aria-hidden>
+            {stories.map((s, i) => (
+              <div key={s.id} className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/30">
+                <div
+                  className="h-full origin-left rounded-full bg-white"
+                  style={{
+                    transform: `scaleX(${i < safeIndex ? 1 : i === safeIndex ? progress : 0})`,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-sm font-semibold text-white drop-shadow">Your story</span>
+            <button
+              type="button"
+              aria-label="Close story"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={onClose}
+              className="pointer-events-auto rounded-full p-1.5 text-white transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
+            >
+              <X className="size-6" aria-hidden />
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
