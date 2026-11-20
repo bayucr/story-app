@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { AnimatePresence } from 'motion/react'
+import { AnimatePresence, MotionConfig } from 'motion/react'
 import { Toaster, toast } from 'sonner'
 import { ComposeDialog } from '@/components/ComposeDialog'
 import { StoryBar } from '@/components/StoryBar'
@@ -63,6 +63,7 @@ export default function App() {
   )
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="min-h-full bg-neutral-950">
       <StoryBar
         stories={stories}
@@ -107,5 +108,6 @@ export default function App() {
 
       <Toaster theme="dark" position="top-center" richColors closeButton />
     </div>
+    </MotionConfig>
   )
 }

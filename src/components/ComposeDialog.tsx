@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { MAX_CAPTION_LENGTH } from '@/types'
 import { cn } from '@/utils/cn'
 
@@ -11,6 +12,8 @@ interface ComposeDialogProps {
 
 export function ComposeDialog({ image, onPost, onCancel }: ComposeDialogProps) {
   const [caption, setCaption] = useState('')
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -24,6 +27,7 @@ export function ComposeDialog({ image, onPost, onCancel }: ComposeDialogProps) {
 
   return (
     <motion.div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label="New story"

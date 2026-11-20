@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, type PanInfo } from 'motion/react'
-import { Trash2, X } from 'lucide-react'
+import { Pause, Play, Trash2, X } from 'lucide-react'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { STORY_DURATION_MS, type Story } from '@/types'
 import { cn } from '@/utils/cn'
 import { timeAgo } from '@/utils/time'
@@ -21,6 +22,10 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
   const [index, setIndex] = useState(startIndex)
   const [progress, setProgress] = useState(0)
   const [confirming, setConfirming] = useState(false)
+  const [userPaused, setUserPaused] = useState(false)
+  const userPausedRef = useRef(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
   const confirmingRef = useRef(false)
   const hiddenRef = useRef(false)
   const resyncRef = useRef(false)
@@ -88,7 +93,9 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
         dt = 0
       }
       last = now
-      if (!pausedRef.current && !hiddenRef.current) elapsedRef.current += dt
+      if (!pausedRef.current && !hiddenRef.current && !userPausedRef.current) {
+        elapsedRef.current += dt
+      }
       const p = Math.min(1, elapsedRef.current / STORY_DURATION_MS)
       setProgress(p)
       if (p >= 1) {
@@ -104,9 +111,15 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
   // Keyboard controls.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const typing = target?.tagName === 'TEXTAREA' || target?.tagName === 'INPUT'
       if (e.key === 'ArrowRight') goRef.current(1)
       else if (e.key === 'ArrowLeft') goRef.current(-1)
       else if (e.key === 'Escape') closeRef.current()
+      else if (e.key === ' ' && !typing && target?.tagName !== 'BUTTON') {
+        e.preventDefault()
+        toggleUserPauseRef.current()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -132,6 +145,13 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
       document.body.style.overflow = prev
     }
   }, [])
+
+  const toggleUserPause = () => {
+    userPausedRef.current = !userPausedRef.current
+    setUserPaused(userPausedRef.current)
+  }
+  const toggleUserPauseRef = useRef(toggleUserPause)
+  toggleUserPauseRef.current = toggleUserPause
 
   const pause = () => {
     pausedRef.current = true
@@ -183,6 +203,7 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
 
   return (
     <motion.div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label="Story viewer"
@@ -219,7 +240,7 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
           <motion.img
             key={story.id}
             src={story.image}
-            alt=""
+            alt={story.caption ? `Story photo: ${story.caption}` : 'Story photo'}
             draggable={false}
             className="absolute inset-0 size-full object-contain"
             initial={{ opacity: 0 }}
@@ -228,6 +249,11 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
             transition={{ duration: 0.2 }}
           />
         </AnimatePresence>
+
+        {/* Screen reader announcement when the story changes */}
+        <p className="sr-only" role="status" aria-live="polite">
+          {`Story ${safeIndex + 1} of ${stories.length}, posted ${timeAgo(story.createdAt)}`}
+        </p>
 
         {/* Top gradient for readability */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />
@@ -251,6 +277,17 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
               <span className="text-sm font-semibold">Your story</span>
               <span className="text-xs text-white/80">{timeAgo(story.createdAt)}</span>
             </div>
+            <div className="pointer-events-auto flex items-center gap-1">
+            <button
+              type="button"
+              aria-label={userPaused ? 'Play story' : 'Pause story'}
+              aria-pressed={userPaused}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={toggleUserPause}
+              className="rounded-full p-1.5 text-white transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
+            >
+              {userPaused ? <Play className="size-6" aria-hidden /> : <Pause className="size-6" aria-hidden />}
+            </button>
             <button
               type="button"
               aria-label="Close story"
@@ -260,6 +297,7 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
             >
               <X className="size-6" aria-hidden />
             </button>
+            </div>
           </div>
         </div>
 
