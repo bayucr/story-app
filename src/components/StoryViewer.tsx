@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, type PanInfo } from 'motion/react'
-import { Pause, Play, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pause, Play, Trash2, X } from 'lucide-react'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { STORY_DURATION_MS, type Story } from '@/types'
 import { cn } from '@/utils/cn'
@@ -314,6 +314,28 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
             </div>
           </div>
         </div>
+
+        {/* Desktop navigation arrows (touch users swipe or tap) */}
+        {safeIndex > 0 && (
+          <button
+            type="button"
+            aria-label="Previous story"
+            onPointerDown={guardTap}
+            onClick={() => go(-1)}
+            className="absolute top-1/2 left-2 hidden -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white sm:block"
+          >
+            <ChevronLeft className="size-6" aria-hidden />
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label={safeIndex === stories.length - 1 ? 'Close story viewer' : 'Next story'}
+          onPointerDown={guardTap}
+          onClick={() => go(1)}
+          className="absolute top-1/2 right-2 hidden -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white sm:block"
+        >
+          <ChevronRight className="size-6" aria-hidden />
+        </button>
 
         {/* Caption */}
         {story.caption && (
