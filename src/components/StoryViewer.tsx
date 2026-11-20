@@ -2,12 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, type PanInfo } from 'motion/react'
 import { ChevronLeft, ChevronRight, Pause, Play, Trash2, X } from 'lucide-react'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
+import { Avatar } from './Avatar'
+import type { Profile } from '@/utils/profile'
 import { STORY_DURATION_MS, type Story } from '@/types'
 import { cn } from '@/utils/cn'
 import { timeAgo } from '@/utils/time'
 
 interface StoryViewerProps {
   stories: Story[]
+  profile: Profile
   startIndex: number
   onClose: () => void
   onView: (id: string) => void
@@ -18,7 +21,7 @@ const SWIPE_DISTANCE = 60
 const SWIPE_VELOCITY = 500
 const CLOSE_DISTANCE = 120
 
-export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: StoryViewerProps) {
+export function StoryViewer({ stories, profile, startIndex, onClose, onView, onDelete }: StoryViewerProps) {
   const [index, setIndex] = useState(startIndex)
   const [progress, setProgress] = useState(0)
   const [confirming, setConfirming] = useState(false)
@@ -287,9 +290,10 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
             ))}
           </div>
           <div className="mt-3 flex items-center justify-between">
-            <div className="flex items-baseline gap-2 text-white drop-shadow">
-              <span className="text-sm font-semibold">Your story</span>
-              <span className="text-xs text-white/80">{timeAgo(story.createdAt)}</span>
+            <div className="flex items-center gap-2.5 text-white drop-shadow">
+              <Avatar name={profile.name} size={32} />
+              <span className="text-sm font-semibold">{profile.username}</span>
+              <span className="text-sm text-white/70">{timeAgo(story.createdAt)}</span>
             </div>
             <div className="pointer-events-auto flex items-center gap-1">
             <button

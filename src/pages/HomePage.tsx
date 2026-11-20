@@ -1,20 +1,23 @@
 import { ImageIcon } from 'lucide-react'
 import { StoryBar } from '@/components/StoryBar'
 import type { Story } from '@/types'
+import type { Profile } from '@/utils/profile'
 
 interface HomePageProps {
   stories: Story[]
+  profile: Profile
   viewedIds: Set<string>
   uploading: boolean
   onAdd: (file: File) => void
   onOpenStory: (index: number) => void
 }
 
-export function HomePage({ stories, viewedIds, uploading, onAdd, onOpenStory }: HomePageProps) {
+export function HomePage({ stories, profile, viewedIds, uploading, onAdd, onOpenStory }: HomePageProps) {
   return (
     <main className="mx-auto w-full max-w-[470px] md:max-w-xl">
       <StoryBar
         stories={stories}
+        profile={profile}
         viewedIds={viewedIds}
         loading={uploading}
         onAdd={onAdd}

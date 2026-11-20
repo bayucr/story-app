@@ -79,6 +79,7 @@ export default function App() {
         ) : (
           <HomePage
             stories={stories}
+            profile={profile}
             viewedIds={viewedIds}
             uploading={uploading}
             onAdd={handleAdd}
@@ -91,6 +92,7 @@ export default function App() {
         {openIndex !== null && stories.length > 0 && (
           <StoryViewer
             stories={stories}
+            profile={profile}
             startIndex={openIndex}
             onClose={handleClose}
             onView={markViewed}
