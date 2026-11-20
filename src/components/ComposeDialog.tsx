@@ -8,9 +8,19 @@ interface ComposeDialogProps {
   image: string
   onPost: (caption: string) => void
   onCancel: () => void
+  title?: string
+  submitLabel?: string
+  maxLength?: number
 }
 
-export function ComposeDialog({ image, onPost, onCancel }: ComposeDialogProps) {
+export function ComposeDialog({
+  image,
+  onPost,
+  onCancel,
+  title = 'New story',
+  submitLabel = 'Post',
+  maxLength = MAX_CAPTION_LENGTH,
+}: ComposeDialogProps) {
   const [caption, setCaption] = useState('')
   const dialogRef = useRef<HTMLDivElement>(null)
   useFocusTrap(dialogRef)
@@ -23,14 +33,14 @@ export function ComposeDialog({ image, onPost, onCancel }: ComposeDialogProps) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onCancel])
 
-  const remaining = MAX_CAPTION_LENGTH - caption.length
+  const remaining = maxLength - caption.length
 
   return (
     <motion.div
       ref={dialogRef}
       role="dialog"
       aria-modal="true"
-      aria-label="New story"
+      aria-label={title}
       className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 p-0 backdrop-blur-sm sm:p-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -46,7 +56,7 @@ export function ComposeDialog({ image, onPost, onCancel }: ComposeDialogProps) {
         animate={{ scale: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 320, damping: 30 }}
       >
-        <h2 className="text-base font-semibold">New story</h2>
+        <h2 className="text-base font-semibold">{title}</h2>
 
         <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl bg-neutral-900 sm:flex-none">
           <img
@@ -64,7 +74,7 @@ export function ComposeDialog({ image, onPost, onCancel }: ComposeDialogProps) {
           <textarea
             id="story-caption"
             value={caption}
-            maxLength={MAX_CAPTION_LENGTH}
+            maxLength={maxLength}
             rows={2}
             autoFocus
             placeholder="Add a caption (optional)"
@@ -97,7 +107,7 @@ export function ComposeDialog({ image, onPost, onCancel }: ComposeDialogProps) {
             onClick={() => onPost(caption)}
             className="rounded-full bg-ig-pink px-5 py-2 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
           >
-            Post
+            {submitLabel}
           </button>
         </div>
       </motion.div>

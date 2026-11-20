@@ -5,21 +5,26 @@ import { AppShell } from '@/components/AppShell'
 import { ComposeDialog } from '@/components/ComposeDialog'
 import { StoryViewer } from '@/components/StoryViewer'
 import { useHashRoute } from '@/hooks/useHashRoute'
+import { usePosts } from '@/hooks/usePosts'
 import { useProfile } from '@/hooks/useProfile'
 import { useStories } from '@/hooks/useStories'
 import { useViewedStories } from '@/hooks/useViewedStories'
 import { HomePage } from '@/pages/HomePage'
 import { ProfilePage } from '@/pages/ProfilePage'
-import { fileToStoryImage, ImageError } from '@/utils/image'
+import { MAX_POST_CAPTION_LENGTH } from '@/types'
+import { fileToPostImage, fileToStoryImage, ImageError } from '@/utils/image'
 
 export default function App() {
   const { stories, addStory, removeStory } = useStories()
   const { viewedIds, markViewed } = useViewedStories(stories)
   const { route, navigate } = useHashRoute()
   const { profile, updateProfile } = useProfile()
+  const { posts, addPost, removePost } = usePosts()
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
   const [draft, setDraft] = useState<string | null>(null)
+  const [postDraft, setPostDraft] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
 
   const handleAdd = useCallback(async (file: File) => {
     setUploading(true)
@@ -51,6 +56,50 @@ export default function App() {
 
   const handleCancelDraft = useCallback(() => setDraft(null), [])
 
+  const handleCreate = useCallback(async (file: File) => {
+    setCreating(true)
+    try {
+      setPostDraft(await fileToPostImage(file))
+    } catch (err) {
+      toast.error(err instanceof ImageError ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setCreating(false)
+    }
+  }, [])
+
+  const handleSharePost = useCallback(
+    (caption: string) => {
+      if (!postDraft) return
+      const result = addPost(postDraft, caption)
+      if (result.ok) {
+        setPostDraft(null)
+        if (route !== '/') navigate('/')
+        toast.success('Post shared.')
+      } else if (result.reason === 'limit') {
+        toast.error('You have reached the limit of 30 posts. Delete one to share a new post.')
+      } else if (result.reason === 'quota') {
+        toast.error('Storage is full. Delete a post or story and try again.')
+      } else {
+        toast.error('Could not save the post. Local storage is unavailable.')
+      }
+    },
+    [addPost, postDraft, route, navigate],
+  )
+
+  const handleCancelPostDraft = useCallback(() => setPostDraft(null), [])
+
+  const handleDeletePost = useCallback(
+    (id: string) => {
+      const result = removePost(id)
+      if (result.ok) {
+        toast.success('Post deleted.')
+      } else {
+        toast.error('Could not delete the post. Local storage is unavailable.')
+      }
+    },
+    [removePost],
+  )
+
   const handleClose = useCallback(() => setOpenIndex(null), [])
 
   const handleDelete = useCallback(
@@ -67,7 +116,13 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <AppShell route={route} onNavigate={navigate} profile={profile}>
+      <AppShell
+        route={route}
+        onNavigate={navigate}
+        profile={profile}
+        onCreate={handleCreate}
+        creating={creating}
+      >
         {route === '/profile' ? (
           <ProfilePage
             profile={profile}
@@ -79,11 +134,13 @@ export default function App() {
         ) : (
           <HomePage
             stories={stories}
+            posts={posts}
             profile={profile}
             viewedIds={viewedIds}
             uploading={uploading}
             onAdd={handleAdd}
             onOpenStory={setOpenIndex}
+            onDeletePost={handleDeletePost}
           />
         )}
       </AppShell>
@@ -103,6 +160,19 @@ export default function App() {
 
       <AnimatePresence>
         {draft && <ComposeDialog image={draft} onPost={handlePost} onCancel={handleCancelDraft} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {postDraft && (
+          <ComposeDialog
+            image={postDraft}
+            title="New post"
+            submitLabel="Share"
+            maxLength={MAX_POST_CAPTION_LENGTH}
+            onPost={handleSharePost}
+            onCancel={handleCancelPostDraft}
+          />
+        )}
       </AnimatePresence>
 
       <Toaster theme="dark" position="top-center" richColors closeButton />
