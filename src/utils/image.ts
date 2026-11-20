@@ -1,7 +1,13 @@
-import { MAX_IMAGE_HEIGHT, MAX_IMAGE_WIDTH } from '@/types'
+import {
+  MAX_IMAGE_HEIGHT,
+  MAX_IMAGE_WIDTH,
+  MAX_POST_IMAGE_HEIGHT,
+  MAX_POST_IMAGE_WIDTH,
+} from '@/types'
 
 export const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024
 const JPEG_QUALITY = 0.8
+const POST_JPEG_QUALITY = 0.7
 
 export class ImageError extends Error {}
 
@@ -36,8 +42,14 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   })
 }
 
-/** Validates, resizes (max 1080x1920) and converts an image file to a base64 JPEG data URL. */
-export async function fileToStoryImage(file: File): Promise<string> {
+interface ImageOptions {
+  maxWidth: number
+  maxHeight: number
+  quality: number
+}
+
+/** Validates, resizes and converts an image file to a base64 JPEG data URL. */
+async function fileToImage(file: File, options: ImageOptions): Promise<string> {
   if (!file.type.startsWith('image/')) {
     throw new ImageError('Please choose an image file.')
   }
@@ -46,7 +58,12 @@ export async function fileToStoryImage(file: File): Promise<string> {
   }
 
   const img = await loadImage(file)
-  const { width, height } = fitWithin(img.naturalWidth, img.naturalHeight)
+  const { width, height } = fitWithin(
+    img.naturalWidth,
+    img.naturalHeight,
+    options.maxWidth,
+    options.maxHeight,
+  )
   if (!width || !height) {
     throw new ImageError('Could not read this image. Try a different file.')
   }
@@ -62,5 +79,23 @@ export async function fileToStoryImage(file: File): Promise<string> {
   ctx.fillRect(0, 0, width, height)
   ctx.drawImage(img, 0, 0, width, height)
 
-  return canvas.toDataURL('image/jpeg', JPEG_QUALITY)
+  return canvas.toDataURL('image/jpeg', options.quality)
+}
+
+/** Story image: max 1080x1920, JPEG quality 0.8. */
+export function fileToStoryImage(file: File): Promise<string> {
+  return fileToImage(file, {
+    maxWidth: MAX_IMAGE_WIDTH,
+    maxHeight: MAX_IMAGE_HEIGHT,
+    quality: JPEG_QUALITY,
+  })
+}
+
+/** Post image: smaller (max 720x1280, JPEG quality 0.7) to fit in localStorage. */
+export function fileToPostImage(file: File): Promise<string> {
+  return fileToImage(file, {
+    maxWidth: MAX_POST_IMAGE_WIDTH,
+    maxHeight: MAX_POST_IMAGE_HEIGHT,
+    quality: POST_JPEG_QUALITY,
+  })
 }
