@@ -153,6 +153,16 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
   const toggleUserPauseRef = useRef(toggleUserPause)
   toggleUserPauseRef.current = toggleUserPause
 
+  /** Marks the current pointer gesture as started on a control so the tap handler ignores it. */
+  const controlTapRef = useRef(false)
+  const guardTap = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation()
+    controlTapRef.current = true
+    window.setTimeout(() => {
+      controlTapRef.current = false
+    }, 400)
+  }
+
   const pause = () => {
     pausedRef.current = true
   }
@@ -193,6 +203,10 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
   }
 
   const handleTap = (event: MouseEvent | TouchEvent | PointerEvent, info: { point: { x: number } }) => {
+    if (controlTapRef.current) {
+      controlTapRef.current = false
+      return
+    }
     if ((event.target as HTMLElement | null)?.closest('button')) return
     const rect = containerRef.current?.getBoundingClientRect()
     if (!rect) return
@@ -282,7 +296,7 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
               type="button"
               aria-label={userPaused ? 'Play story' : 'Pause story'}
               aria-pressed={userPaused}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={guardTap}
               onClick={toggleUserPause}
               className="rounded-full p-1.5 text-white transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
             >
@@ -291,7 +305,7 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
             <button
               type="button"
               aria-label="Close story"
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={guardTap}
               onClick={onClose}
               className="pointer-events-auto rounded-full p-1.5 text-white transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
             >
@@ -317,7 +331,7 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
               role="alertdialog"
               aria-label="Delete this story?"
               className="pointer-events-auto flex items-center gap-2 rounded-full bg-neutral-900/90 py-1.5 pr-1.5 pl-4 text-sm text-white backdrop-blur"
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={guardTap}
             >
               <span>Delete this story?</span>
               <button
@@ -340,7 +354,7 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
             <button
               type="button"
               aria-label="Delete story"
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={guardTap}
               onClick={requestDelete}
               className="pointer-events-auto rounded-full bg-black/40 p-2.5 text-white backdrop-blur transition hover:bg-black/60 focus-visible:outline-2 focus-visible:outline-white"
             >
