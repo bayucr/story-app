@@ -5,11 +5,12 @@ import { ComposeDialog } from '@/components/ComposeDialog'
 import { StoryBar } from '@/components/StoryBar'
 import { StoryViewer } from '@/components/StoryViewer'
 import { useStories } from '@/hooks/useStories'
+import { useViewedStories } from '@/hooks/useViewedStories'
 import { fileToStoryImage, ImageError } from '@/utils/image'
 
 export default function App() {
   const { stories, addStory, removeStory } = useStories()
-  const [viewedIds, setViewedIds] = useState<Set<string>>(() => new Set())
+  const { viewedIds, markViewed } = useViewedStories(stories)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
   const [draft, setDraft] = useState<string | null>(null)
@@ -46,10 +47,6 @@ export default function App() {
   )
 
   const handleCancelDraft = useCallback(() => setDraft(null), [])
-
-  const handleView = useCallback((id: string) => {
-    setViewedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
-  }, [])
 
   const handleClose = useCallback(() => setOpenIndex(null), [])
 
@@ -96,7 +93,7 @@ export default function App() {
             stories={stories}
             startIndex={openIndex}
             onClose={handleClose}
-            onView={handleView}
+            onView={markViewed}
             onDelete={handleDelete}
           />
         )}
