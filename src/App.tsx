@@ -7,7 +7,7 @@ import { useStories } from '@/hooks/useStories'
 import { fileToStoryImage, ImageError } from '@/utils/image'
 
 export default function App() {
-  const { stories, addStory } = useStories()
+  const { stories, addStory, removeStory } = useStories()
   const [viewedIds, setViewedIds] = useState<Set<string>>(() => new Set())
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -39,6 +39,18 @@ export default function App() {
   }, [])
 
   const handleClose = useCallback(() => setOpenIndex(null), [])
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      const result = removeStory(id)
+      if (result.ok) {
+        toast.success('Story deleted.')
+      } else {
+        toast.error('Could not delete the story. Local storage is unavailable.')
+      }
+    },
+    [removeStory],
+  )
 
   return (
     <div className="min-h-full bg-neutral-950">
@@ -72,6 +84,7 @@ export default function App() {
             startIndex={openIndex}
             onClose={handleClose}
             onView={handleView}
+            onDelete={handleDelete}
           />
         )}
       </AnimatePresence>

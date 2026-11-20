@@ -66,5 +66,13 @@ export function useStories() {
     return result
   }, [])
 
-  return { stories, addStory }
+  /** Removes a story by id. Returns the save result so the UI can report failures. */
+  const removeStory = useCallback((id: string): SaveResult => {
+    const next = storiesRef.current.filter((s) => s.id !== id)
+    const result = saveStories(next)
+    if (result.ok) setStories(next)
+    return result
+  }, [])
+
+  return { stories, addStory, removeStory }
 }

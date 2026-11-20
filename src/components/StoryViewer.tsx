@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, type PanInfo } from 'motion/react'
-import { X } from 'lucide-react'
+import { Trash2, X } from 'lucide-react'
 import { STORY_DURATION_MS, type Story } from '@/types'
 import { cn } from '@/utils/cn'
 
@@ -9,15 +9,18 @@ interface StoryViewerProps {
   startIndex: number
   onClose: () => void
   onView: (id: string) => void
+  onDelete: (id: string) => void
 }
 
 const SWIPE_DISTANCE = 60
 const SWIPE_VELOCITY = 500
 const CLOSE_DISTANCE = 120
 
-export function StoryViewer({ stories, startIndex, onClose, onView }: StoryViewerProps) {
+export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: StoryViewerProps) {
   const [index, setIndex] = useState(startIndex)
   const [progress, setProgress] = useState(0)
+  const [confirming, setConfirming] = useState(false)
+  const confirmingRef = useRef(false)
 
   const safeIndex = Math.min(index, stories.length - 1)
   const story: Story | undefined = stories[safeIndex]
@@ -58,6 +61,13 @@ export function StoryViewer({ stories, startIndex, onClose, onView }: StoryViewe
   useEffect(() => {
     if (storyId) onView(storyId)
   }, [storyId, onView])
+
+  // Cancel a pending delete confirmation when the visible story changes.
+  useEffect(() => {
+    confirmingRef.current = false
+    pausedRef.current = false
+    setConfirming(false)
+  }, [storyId])
 
   // Progress timer + auto-advance.
   useEffect(() => {
@@ -107,7 +117,27 @@ export function StoryViewer({ stories, startIndex, onClose, onView }: StoryViewe
     pausedRef.current = true
   }
   const resume = () => {
+    pausedRef.current = confirmingRef.current
+  }
+
+  const requestDelete = () => {
+    confirmingRef.current = true
+    pausedRef.current = true
+    setConfirming(true)
+  }
+
+  const cancelDelete = () => {
+    confirmingRef.current = false
     pausedRef.current = false
+    setConfirming(false)
+  }
+
+  const confirmDelete = () => {
+    if (!story) return
+    confirmingRef.current = false
+    pausedRef.current = false
+    setConfirming(false)
+    onDelete(story.id)
   }
 
   const handleDragEnd = (_: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => {
@@ -208,6 +238,45 @@ export function StoryViewer({ stories, startIndex, onClose, onView }: StoryViewe
               <X className="size-6" aria-hidden />
             </button>
           </div>
+        </div>
+
+        {/* Delete controls */}
+        <div className="safe-bottom pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">
+          {confirming ? (
+            <div
+              role="alertdialog"
+              aria-label="Delete this story?"
+              className="pointer-events-auto flex items-center gap-2 rounded-full bg-neutral-900/90 py-1.5 pr-1.5 pl-4 text-sm text-white backdrop-blur"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <span>Delete this story?</span>
+              <button
+                type="button"
+                onClick={cancelDelete}
+                className="rounded-full px-3 py-1.5 font-medium text-neutral-200 transition hover:bg-white/15"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={confirmDelete}
+                className="rounded-full bg-red-600 px-3 py-1.5 font-medium text-white transition hover:bg-red-500"
+              >
+                Delete
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              aria-label="Delete story"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={requestDelete}
+              className="pointer-events-auto rounded-full bg-black/40 p-2.5 text-white backdrop-blur transition hover:bg-black/60 focus-visible:outline-2 focus-visible:outline-white"
+            >
+              <Trash2 className="size-5" aria-hidden />
+            </button>
+          )}
         </div>
       </motion.div>
     </motion.div>
