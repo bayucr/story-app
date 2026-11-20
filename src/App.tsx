@@ -3,6 +3,7 @@ import { AnimatePresence, MotionConfig } from 'motion/react'
 import { Toaster, toast } from 'sonner'
 import { ComposeDialog } from '@/components/ComposeDialog'
 import { StoryBar } from '@/components/StoryBar'
+import { StoryGrid } from '@/components/StoryGrid'
 import { StoryViewer } from '@/components/StoryViewer'
 import { useStories } from '@/hooks/useStories'
 import { useViewedStories } from '@/hooks/useViewedStories'
@@ -73,18 +74,16 @@ export default function App() {
         onOpen={setOpenIndex}
       />
 
-      <main className="mx-auto flex max-w-3xl flex-col items-center px-6 py-16 text-center">
+      <main>
         {stories.length === 0 ? (
-          <>
+          <div className="mx-auto flex max-w-3xl flex-col items-center px-6 py-16 text-center">
             <h1 className="text-xl font-semibold">No stories yet</h1>
             <p className="mt-2 max-w-sm text-sm text-neutral-400">
               Tap the + button to share a photo. Stories disappear automatically after 24 hours.
             </p>
-          </>
+          </div>
         ) : (
-          <p className="text-sm text-neutral-400">
-            {stories.length} active {stories.length === 1 ? 'story' : 'stories'}. Tap one to view, swipe to browse.
-          </p>
+          <StoryGrid stories={stories} viewedIds={viewedIds} onOpen={setOpenIndex} />
         )}
       </main>
 
