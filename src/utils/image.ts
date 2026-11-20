@@ -11,6 +11,11 @@ const POST_JPEG_QUALITY = 0.7
 
 export class ImageError extends Error {}
 
+/** User-facing message for an error thrown while processing an image. */
+export function getImageErrorMessage(err: unknown): string {
+  return err instanceof ImageError ? err.message : 'Something went wrong. Please try again.'
+}
+
 /** Scales (width, height) down to fit within max bounds, keeping aspect ratio. Never upscales. */
 export function fitWithin(
   width: number,
