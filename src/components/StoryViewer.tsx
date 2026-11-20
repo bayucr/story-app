@@ -356,7 +356,7 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
               aria-label="Delete story"
               onPointerDown={guardTap}
               onClick={requestDelete}
-              className="pointer-events-auto rounded-full bg-black/40 p-2.5 text-white backdrop-blur transition hover:bg-black/60 focus-visible:outline-2 focus-visible:outline-white"
+              className="pointer-events-auto rounded-full bg-black/40 p-2.5 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
             >
               <Trash2 className="size-5" aria-hidden />
             </button>
