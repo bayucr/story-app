@@ -1,17 +1,11 @@
 import { cn } from '@/utils/cn'
 import type { Story } from '@/types'
+import { timeAgo } from '@/utils/time'
 
 interface StoryItemProps {
   story: Story
   viewed: boolean
   onOpen: () => void
-}
-
-function timeAgo(createdAt: number, now: number = Date.now()): string {
-  const minutes = Math.floor((now - createdAt) / 60_000)
-  if (minutes < 1) return 'Just now'
-  if (minutes < 60) return `${minutes}m ago`
-  return `${Math.floor(minutes / 60)}h ago`
 }
 
 export function StoryItem({ story, viewed, onOpen }: StoryItemProps) {

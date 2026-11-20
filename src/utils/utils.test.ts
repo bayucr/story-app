@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STORY_TTL_MS, type Story } from '@/types'
+import { MAX_CAPTION_LENGTH, STORY_TTL_MS, type Story } from '@/types'
 import { createStory, isExpired, msUntilNextExpiry, removeExpired } from './expiry'
 import { fitWithin } from './image'
 
@@ -12,10 +12,21 @@ const make = (expiresAt: number): Story => ({
 
 describe('expiry', () => {
   it('creates a story that expires after 24 hours', () => {
-    const s = createStory('data:image/jpeg;base64,AAAA', 1000)
+    const s = createStory('data:image/jpeg;base64,AAAA', undefined, 1000)
     expect(s.createdAt).toBe(1000)
     expect(s.expiresAt).toBe(1000 + STORY_TTL_MS)
     expect(s.id).toBeTruthy()
+    expect(s.caption).toBeUndefined()
+  })
+
+  it('trims captions and treats blank ones as missing', () => {
+    expect(createStory('data:image/jpeg;base64,AAAA', '  hello  ', 1).caption).toBe('hello')
+    expect(createStory('data:image/jpeg;base64,AAAA', '   ', 1)).not.toHaveProperty('caption')
+  })
+
+  it('truncates captions to the maximum length', () => {
+    const s = createStory('data:image/jpeg;base64,AAAA', 'a'.repeat(500), 1)
+    expect(s.caption?.length).toBe(MAX_CAPTION_LENGTH)
   })
 
   it('detects expiry exactly at the boundary', () => {

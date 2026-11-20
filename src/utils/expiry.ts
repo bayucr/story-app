@@ -1,6 +1,7 @@
-import { STORY_TTL_MS, type Story } from '@/types'
+import { MAX_CAPTION_LENGTH, STORY_TTL_MS, type Story } from '@/types'
 
-export function createStory(image: string, now: number = Date.now()): Story {
+export function createStory(image: string, caption?: string, now: number = Date.now()): Story {
+  const trimmed = caption?.trim().slice(0, MAX_CAPTION_LENGTH)
   return {
     id: typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
@@ -8,6 +9,7 @@ export function createStory(image: string, now: number = Date.now()): Story {
     image,
     createdAt: now,
     expiresAt: now + STORY_TTL_MS,
+    ...(trimmed ? { caption: trimmed } : {}),
   }
 }
 

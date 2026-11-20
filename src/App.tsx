@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { AnimatePresence } from 'motion/react'
 import { Toaster, toast } from 'sonner'
+import { ComposeDialog } from '@/components/ComposeDialog'
 import { StoryBar } from '@/components/StoryBar'
 import { StoryViewer } from '@/components/StoryViewer'
 import { useStories } from '@/hooks/useStories'
@@ -11,28 +12,40 @@ export default function App() {
   const [viewedIds, setViewedIds] = useState<Set<string>>(() => new Set())
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [draft, setDraft] = useState<string | null>(null)
 
   const handleAdd = useCallback(
     async (file: File) => {
       setUploading(true)
       try {
         const image = await fileToStoryImage(file)
-        const result = addStory(image)
-        if (result.ok) {
-          toast.success('Story posted. It will disappear in 24 hours.')
-        } else if (result.reason === 'quota') {
-          toast.error('Storage is full. Wait for older stories to expire and try again.')
-        } else {
-          toast.error('Could not save the story. Local storage is unavailable.')
-        }
+        setDraft(image)
       } catch (err) {
         toast.error(err instanceof ImageError ? err.message : 'Something went wrong. Please try again.')
       } finally {
         setUploading(false)
       }
     },
-    [addStory],
+    [],
   )
+
+  const handlePost = useCallback(
+    (caption: string) => {
+      if (!draft) return
+      const result = addStory(draft, caption)
+      if (result.ok) {
+        setDraft(null)
+        toast.success('Story posted. It will disappear in 24 hours.')
+      } else if (result.reason === 'quota') {
+        toast.error('Storage is full. Wait for older stories to expire and try again.')
+      } else {
+        toast.error('Could not save the story. Local storage is unavailable.')
+      }
+    },
+    [addStory, draft],
+  )
+
+  const handleCancelDraft = useCallback(() => setDraft(null), [])
 
   const handleView = useCallback((id: string) => {
     setViewedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
@@ -86,6 +99,12 @@ export default function App() {
             onView={handleView}
             onDelete={handleDelete}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {draft && (
+          <ComposeDialog image={draft} onPost={handlePost} onCancel={handleCancelDraft} />
         )}
       </AnimatePresence>
 

@@ -3,6 +3,7 @@ import { AnimatePresence, motion, type PanInfo } from 'motion/react'
 import { Trash2, X } from 'lucide-react'
 import { STORY_DURATION_MS, type Story } from '@/types'
 import { cn } from '@/utils/cn'
+import { timeAgo } from '@/utils/time'
 
 interface StoryViewerProps {
   stories: Story[]
@@ -227,7 +228,10 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
             ))}
           </div>
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-sm font-semibold text-white drop-shadow">Your story</span>
+            <div className="flex items-baseline gap-2 text-white drop-shadow">
+              <span className="text-sm font-semibold">Your story</span>
+              <span className="text-xs text-white/80">{timeAgo(story.createdAt)}</span>
+            </div>
             <button
               type="button"
               aria-label="Close story"
@@ -239,6 +243,15 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
             </button>
           </div>
         </div>
+
+        {/* Caption */}
+        {story.caption && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-16 px-4 pr-16">
+            <p className="inline-block max-w-full rounded-xl bg-black/55 px-3 py-2 text-sm leading-snug break-words whitespace-pre-wrap text-white backdrop-blur-sm">
+              {story.caption}
+            </p>
+          </div>
+        )}
 
         {/* Delete controls */}
         <div className="safe-bottom pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">

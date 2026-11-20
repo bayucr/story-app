@@ -1,4 +1,4 @@
-import { STORAGE_KEY, type Story } from '@/types'
+import { MAX_CAPTION_LENGTH, STORAGE_KEY, type Story } from '@/types'
 
 function isStory(value: unknown): value is Story {
   if (typeof value !== 'object' || value === null) return false
@@ -8,7 +8,9 @@ function isStory(value: unknown): value is Story {
     typeof v.image === 'string' &&
     v.image.startsWith('data:image/') &&
     typeof v.createdAt === 'number' &&
-    typeof v.expiresAt === 'number'
+    typeof v.expiresAt === 'number' &&
+    (v.caption === undefined ||
+      (typeof v.caption === 'string' && v.caption.length <= MAX_CAPTION_LENGTH))
   )
 }
 

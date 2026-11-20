@@ -59,8 +59,8 @@ export function useStories() {
   }, [])
 
   /** Adds a story (newest first). Returns the save result so the UI can report quota errors. */
-  const addStory = useCallback((image: string): SaveResult => {
-    const next = [createStory(image), ...removeExpired(storiesRef.current)]
+  const addStory = useCallback((image: string, caption?: string): SaveResult => {
+    const next = [createStory(image, caption), ...removeExpired(storiesRef.current)]
     const result = saveStories(next)
     if (result.ok) setStories(next)
     return result
