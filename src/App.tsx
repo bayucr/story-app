@@ -11,7 +11,7 @@ import { useStories } from '@/hooks/useStories'
 import { useViewedStories } from '@/hooks/useViewedStories'
 import { HomePage } from '@/pages/HomePage'
 import { ProfilePage } from '@/pages/ProfilePage'
-import { MAX_POST_CAPTION_LENGTH } from '@/types'
+import { MAX_POST_CAPTION_LENGTH, type Post } from '@/types'
 import { fileToPostImage, fileToStoryImage, ImageError } from '@/utils/image'
 
 export default function App() {
@@ -19,7 +19,7 @@ export default function App() {
   const { viewedIds, markViewed } = useViewedStories(stories)
   const { route, navigate } = useHashRoute()
   const { profile, updateProfile } = useProfile()
-  const { posts, addPost, removePost } = usePosts()
+  const { posts, addPost, updatePost, removePost } = usePosts()
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
   const [draft, setDraft] = useState<string | null>(null)
@@ -100,6 +100,20 @@ export default function App() {
     [removePost],
   )
 
+  const handleUpdatePost = useCallback(
+    (post: Post) => {
+      const result = updatePost(post)
+      if (!result.ok) {
+        toast.error(
+          result.reason === 'quota'
+            ? 'Storage is full. Could not save your change.'
+            : 'Could not save your change. Local storage is unavailable.',
+        )
+      }
+    },
+    [updatePost],
+  )
+
   const handleClose = useCallback(() => setOpenIndex(null), [])
 
   const handleDelete = useCallback(
@@ -141,6 +155,7 @@ export default function App() {
             onAdd={handleAdd}
             onOpenStory={setOpenIndex}
             onDeletePost={handleDeletePost}
+            onUpdatePost={handleUpdatePost}
           />
         )}
       </AppShell>

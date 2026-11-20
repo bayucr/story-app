@@ -13,6 +13,7 @@ interface HomePageProps {
   onAdd: (file: File) => void
   onOpenStory: (index: number) => void
   onDeletePost: (id: string) => void
+  onUpdatePost: (post: Post) => void
 }
 
 export function HomePage({
@@ -24,6 +25,7 @@ export function HomePage({
   onAdd,
   onOpenStory,
   onDeletePost,
+  onUpdatePost,
 }: HomePageProps) {
   return (
     <main className="mx-auto w-full max-w-[470px] md:max-w-xl">
@@ -49,7 +51,13 @@ export function HomePage({
           </div>
         ) : (
           posts.map((post) => (
-            <PostCard key={post.id} post={post} profile={profile} onDelete={onDeletePost} />
+            <PostCard
+              key={post.id}
+              post={post}
+              profile={profile}
+              onDelete={onDeletePost}
+              onUpdate={onUpdatePost}
+            />
           ))
         )}
       </section>
