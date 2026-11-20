@@ -22,6 +22,8 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
   const [progress, setProgress] = useState(0)
   const [confirming, setConfirming] = useState(false)
   const confirmingRef = useRef(false)
+  const hiddenRef = useRef(false)
+  const resyncRef = useRef(false)
 
   const safeIndex = Math.min(index, stories.length - 1)
   const story: Story | undefined = stories[safeIndex]
@@ -78,10 +80,15 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
     let last = performance.now()
     let raf = 0
     const tick = (now: number) => {
-      // Cap dt so a throttled/hidden tab doesn't skip stories.
-      const dt = Math.min(now - last, 100)
+      // Cap dt so a long frame never skips ahead; after the tab was hidden,
+      // restart the clock so the time spent away is not counted.
+      let dt = Math.min(now - last, 100)
+      if (resyncRef.current) {
+        resyncRef.current = false
+        dt = 0
+      }
       last = now
-      if (!pausedRef.current) elapsedRef.current += dt
+      if (!pausedRef.current && !hiddenRef.current) elapsedRef.current += dt
       const p = Math.min(1, elapsedRef.current / STORY_DURATION_MS)
       setProgress(p)
       if (p >= 1) {
@@ -103,6 +110,18 @@ export function StoryViewer({ stories, startIndex, onClose, onView, onDelete }: 
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // Pause while the tab is hidden and resume from the same position when it returns.
+  useEffect(() => {
+    const onVisibility = () => {
+      const hidden = document.visibilityState === 'hidden'
+      hiddenRef.current = hidden
+      if (!hidden) resyncRef.current = true
+    }
+    onVisibility()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
   // Lock page scroll while open.
