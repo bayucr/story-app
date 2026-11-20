@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/Avatar'
+import { CircleDashed } from 'lucide-react'
+import { EmptyState } from '@/components/EmptyState'
 import { PostGrid } from '@/components/PostGrid'
 import { StoryGrid } from '@/components/StoryGrid'
 import { cn } from '@/utils/cn'
@@ -163,7 +165,24 @@ export function ProfilePage({
       )}
 
       <div className="border-t border-neutral-800">
-        <div role="tablist" aria-label="Profile content" className="flex justify-center gap-10">
+        <div
+          role="tablist"
+          aria-label="Profile content"
+          className="flex justify-center gap-10"
+          onKeyDown={(e) => {
+            const order: Tab[] = ['posts', 'saved', 'stories']
+            const i = order.indexOf(tab)
+            let next = i
+            if (e.key === 'ArrowRight') next = (i + 1) % order.length
+            else if (e.key === 'ArrowLeft') next = (i + order.length - 1) % order.length
+            else if (e.key === 'Home') next = 0
+            else if (e.key === 'End') next = order.length - 1
+            else return
+            e.preventDefault()
+            setTab(order[next])
+            document.getElementById(`tab-${order[next]}`)?.focus()
+          }}
+        >
           {(
             [
               ['posts', 'Posts'],
@@ -178,6 +197,7 @@ export function ProfilePage({
               id={`tab-${id}`}
               aria-selected={tab === id}
               aria-controls="profile-panel"
+              tabIndex={tab === id ? 0 : -1}
               onClick={() => setTab(id)}
               className={cn(
                 '-mt-px border-t py-3 text-xs font-semibold tracking-wider uppercase transition',
@@ -192,20 +212,18 @@ export function ProfilePage({
 
         <div role="tabpanel" id="profile-panel" aria-labelledby={`tab-${tab}`}>
           {tab === 'posts' && (
-            <PostGrid posts={posts} emptyMessage="No posts yet. Use Create to share one." onOpen={onOpenPost} />
+            <PostGrid posts={posts} variant="posts" onOpen={onOpenPost} />
           )}
           {tab === 'saved' && (
-            <PostGrid
-              posts={savedPosts}
-              emptyMessage="No saved posts. Tap the bookmark on a post to save it."
-              onOpen={onOpenPost}
-            />
+            <PostGrid posts={savedPosts} variant="saved" onOpen={onOpenPost} />
           )}
           {tab === 'stories' &&
             (stories.length === 0 ? (
-              <p className="px-6 py-16 text-center text-sm text-neutral-400">
-                No active stories. Share one from the Home page.
-              </p>
+              <EmptyState
+                icon={CircleDashed}
+                title="No active stories"
+                message="Share a story from the Home page. It disappears after 24 hours."
+              />
             ) : (
               <StoryGrid stories={stories} viewedIds={viewedIds} onOpen={onOpenStory} />
             ))}

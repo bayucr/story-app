@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import { Fragment, useRef, type ReactNode } from 'react'
 import { Home, PlusSquare, User } from 'lucide-react'
 import { Avatar } from './Avatar'
 import type { Route } from '@/hooks/useHashRoute'
@@ -95,35 +95,38 @@ export function AppShell({ route, onNavigate, profile, onCreate, creating = fals
         {ITEMS.map(({ to, label, icon: Icon }) => {
           const active = route === to
           return (
-            <button
-              key={to}
-              type="button"
-              aria-label={label}
-              aria-current={active ? 'page' : undefined}
-              onClick={() => onNavigate(to)}
-              className={cn(
-                'flex flex-1 items-center justify-center py-3 transition',
-                'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ig-pink',
-                active ? 'text-white' : 'text-neutral-500',
+            <Fragment key={to}>
+              {to === '/profile' && (
+                <button
+                  type="button"
+                  aria-label="Create post"
+                  disabled={creating}
+                  onClick={openPicker}
+                  className="flex flex-1 items-center justify-center py-3 text-neutral-500 transition focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ig-pink disabled:opacity-60"
+                >
+                  <PlusSquare className="size-6" aria-hidden />
+                </button>
               )}
-            >
-              {to === '/profile' ? (
-                <Avatar name={profile.name} size={26} />
-              ) : (
-                <Icon className="size-6" strokeWidth={active ? 2.5 : 2} aria-hidden />
-              )}
-            </button>
+              <button
+                type="button"
+                aria-label={label}
+                aria-current={active ? 'page' : undefined}
+                onClick={() => onNavigate(to)}
+                className={cn(
+                  'flex flex-1 items-center justify-center py-3 transition',
+                  'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ig-pink',
+                  active ? 'text-white' : 'text-neutral-500',
+                )}
+              >
+                {to === '/profile' ? (
+                  <Avatar name={profile.name} size={26} />
+                ) : (
+                  <Icon className="size-6" strokeWidth={active ? 2.5 : 2} aria-hidden />
+                )}
+              </button>
+            </Fragment>
           )
         })}
-        <button
-          type="button"
-          aria-label="Create post"
-          disabled={creating}
-          onClick={openPicker}
-          className="order-1 flex flex-1 items-center justify-center py-3 text-neutral-500 transition focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ig-pink disabled:opacity-60"
-        >
-          <PlusSquare className="size-6" aria-hidden />
-        </button>
       </nav>
     </div>
   )

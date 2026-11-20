@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
-import { Heart, MessageCircle } from 'lucide-react'
+import { Bookmark, Camera, Heart, MessageCircle } from 'lucide-react'
+import { EmptyState } from './EmptyState'
 import type { Post } from '@/types'
 import { loadPostImage } from '@/utils/postStorage'
 
 interface PostGridProps {
   posts: Post[]
-  emptyMessage: string
+  variant: 'posts' | 'saved'
   onOpen: (id: string) => void
 }
 
@@ -25,7 +26,7 @@ function PostThumb({ post, onOpen }: { post: Post; onOpen: (id: string) => void 
           alt=""
           draggable={false}
           loading="lazy"
-          className="size-full object-cover"
+          className="size-full animate-[fade-in_0.3s_ease-out] object-cover"
         />
       ) : (
         <span className="flex size-full items-center justify-center text-xs text-neutral-500">
@@ -46,9 +47,17 @@ function PostThumb({ post, onOpen }: { post: Post; onOpen: (id: string) => void 
   )
 }
 
-export function PostGrid({ posts, emptyMessage, onOpen }: PostGridProps) {
+export function PostGrid({ posts, variant, onOpen }: PostGridProps) {
   if (posts.length === 0) {
-    return <p className="px-6 py-16 text-center text-sm text-neutral-400">{emptyMessage}</p>
+    return variant === 'saved' ? (
+      <EmptyState
+        icon={Bookmark}
+        title="No saved posts"
+        message="Tap the bookmark on a post to save it here."
+      />
+    ) : (
+      <EmptyState icon={Camera} title="No posts yet" message="Use Create to share your first post." />
+    )
   }
 
   return (
