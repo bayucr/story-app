@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   DEFAULT_PROFILE,
+  MAX_AVATAR_LENGTH,
   MAX_BIO_LENGTH,
+  sanitizeAvatar,
   MAX_USERNAME_LENGTH,
   PROFILE_KEY,
   loadProfile,
@@ -29,6 +31,26 @@ describe('profile', () => {
 
   it('truncates a long bio', () => {
     expect(normalizeProfile({ bio: 'a'.repeat(500) }).bio.length).toBe(MAX_BIO_LENGTH)
+  })
+
+  it('accepts only reasonably sized image data URLs as avatar', () => {
+    const ok = 'data:image/jpeg;base64,AAAA'
+    expect(sanitizeAvatar(ok)).toBe(ok)
+    expect(sanitizeAvatar('http://x/y.png')).toBeUndefined()
+    expect(sanitizeAvatar(123)).toBeUndefined()
+    expect(sanitizeAvatar('data:image/jpeg;base64,' + 'A'.repeat(MAX_AVATAR_LENGTH))).toBeUndefined()
+  })
+
+  it('keeps a valid avatar and drops an invalid one', () => {
+    const ok = 'data:image/jpeg;base64,AAAA'
+    expect(normalizeProfile({ avatar: ok }).avatar).toBe(ok)
+    expect(normalizeProfile({ avatar: 'nope' })).not.toHaveProperty('avatar')
+  })
+
+  it('round-trips a profile with an avatar', () => {
+    const p = { username: 'bayu', name: 'Bayu', bio: '', avatar: 'data:image/jpeg;base64,AAAA' }
+    expect(saveProfile(p)).toBe(true)
+    expect(loadProfile()).toEqual(p)
   })
 
   it('returns the default profile when nothing is stored', () => {

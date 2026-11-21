@@ -5,11 +5,12 @@ import { cn } from '@/utils/cn'
 
 interface AddStoryButtonProps {
   name: string
+  avatar?: string
   onSelect: (file: File) => void
   loading?: boolean
 }
 
-export function AddStoryButton({ name, onSelect, loading = false }: AddStoryButtonProps) {
+export function AddStoryButton({ name, avatar, onSelect, loading = false }: AddStoryButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   return (
@@ -26,7 +27,7 @@ export function AddStoryButton({ name, onSelect, loading = false }: AddStoryButt
           'disabled:cursor-not-allowed disabled:opacity-60',
         )}
       >
-        <Avatar name={name} size={66} className="bg-neutral-800 [background:var(--color-neutral-800)]" />
+        <Avatar name={name} src={avatar} size={66} className="bg-neutral-800 [background:var(--color-neutral-800)]" />
         <span
           className={cn(
             'absolute right-0 bottom-0 flex size-6 items-center justify-center rounded-full',

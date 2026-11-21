@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/Avatar'
 import { CircleDashed } from 'lucide-react'
@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { PostGrid } from '@/components/PostGrid'
 import { StoryGrid } from '@/components/StoryGrid'
 import { cn } from '@/utils/cn'
+import { fileToAvatarImage, getImageErrorMessage } from '@/utils/image'
 import {
   MAX_BIO_LENGTH,
   MAX_NAME_LENGTH,
@@ -39,10 +40,31 @@ export function ProfilePage({
   onOpenStory,
   onOpenPost,
 }: ProfilePageProps) {
+  const avatarInputRef = useRef<HTMLInputElement>(null)
   const [tab, setTab] = useState<Tab>('posts')
   const savedPosts = posts.filter((p) => p.saved)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Profile>(profile)
+
+  const changeAvatar = async (file: File) => {
+    try {
+      const avatar = await fileToAvatarImage(file)
+      if (onSave({ ...profile, avatar })) {
+        toast.success('Profile photo updated.')
+      } else {
+        toast.error('Could not save the photo. Storage is full or unavailable.')
+      }
+    } catch (err) {
+      toast.error(getImageErrorMessage(err))
+    }
+  }
+
+  const removeAvatar = () => {
+    const { avatar: _removed, ...rest } = profile
+    void _removed
+    if (onSave(rest)) toast.success('Profile photo removed.')
+    else toast.error('Could not update the profile. Local storage is unavailable.')
+  }
 
   const startEdit = () => {
     setDraft(profile)
@@ -50,7 +72,7 @@ export function ProfilePage({
   }
 
   const submit = () => {
-    if (onSave(draft)) {
+    if (onSave({ ...draft, avatar: profile.avatar })) {
       setEditing(false)
       toast.success('Profile updated.')
     } else {
@@ -61,7 +83,36 @@ export function ProfilePage({
   return (
     <main className="mx-auto w-full max-w-3xl">
       <header className="flex items-start gap-5 px-4 py-6 sm:gap-10 sm:px-6">
-        <Avatar name={profile.name} size={88} className="sm:size-[120px]" />
+        <div className="flex shrink-0 flex-col items-center gap-2">
+          <button
+            type="button"
+            aria-label="Change profile photo"
+            onClick={() => avatarInputRef.current?.click()}
+            className="rounded-full transition hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ig-pink"
+          >
+            <Avatar name={profile.name} src={profile.avatar} size={88} className="sm:size-[120px]" />
+          </button>
+          {profile.avatar && (
+            <button
+              type="button"
+              onClick={removeAvatar}
+              className="text-xs text-neutral-400 transition hover:text-white focus-visible:outline-2 focus-visible:outline-ig-pink"
+            >
+              Remove photo
+            </button>
+          )}
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) void changeAvatar(file)
+            }}
+          />
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="truncate text-xl font-semibold">{profile.username}</h1>

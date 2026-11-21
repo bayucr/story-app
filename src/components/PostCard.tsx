@@ -57,7 +57,7 @@ export function PostCard({ post, profile, onDelete, onUpdate }: PostCardProps) {
   return (
     <article aria-label={`Post by ${profile.username}`} className="border-b border-neutral-900 pb-4">
       <header className="flex items-center gap-3 px-3 py-3">
-        <Avatar name={profile.name} size={32} />
+        <Avatar name={profile.name} src={profile.avatar} size={32} />
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="truncate text-sm font-semibold">{profile.username}</span>
           <span className="shrink-0 text-sm text-neutral-500">{timeAgo(post.createdAt)}</span>

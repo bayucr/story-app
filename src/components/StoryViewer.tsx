@@ -303,7 +303,7 @@ export function StoryViewer({ stories, profile, startIndex, onClose, onView, onD
           </div>
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2.5 text-white drop-shadow">
-              <Avatar name={profile.name} size={32} />
+              <Avatar name={profile.name} src={profile.avatar} size={32} />
               <span className="text-sm font-semibold">{profile.username}</span>
               <span className="text-sm text-white/70">{timeAgo(story.createdAt)}</span>
             </div>

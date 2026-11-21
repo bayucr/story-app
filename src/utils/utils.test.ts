@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_CAPTION_LENGTH, STORY_TTL_MS, type Story } from '@/types'
 import { createStory, isExpired, msUntilNextExpiry, removeExpired } from './expiry'
-import { fitWithin } from './image'
+import { coverCrop, fitWithin } from './image'
 
 const make = (expiresAt: number): Story => ({
   id: String(expiresAt),
@@ -45,6 +45,20 @@ describe('expiry', () => {
     expect(msUntilNextExpiry([])).toBeNull()
     expect(msUntilNextExpiry([make(500), make(300)], 100)).toBe(200)
     expect(msUntilNextExpiry([make(50)], 100)).toBe(0)
+  })
+})
+
+describe('coverCrop', () => {
+  it('crops a landscape image to a centered square', () => {
+    expect(coverCrop(400, 200)).toEqual({ sx: 100, sy: 0, size: 200 })
+  })
+
+  it('crops a portrait image to a centered square', () => {
+    expect(coverCrop(200, 500)).toEqual({ sx: 0, sy: 150, size: 200 })
+  })
+
+  it('keeps a square image as is', () => {
+    expect(coverCrop(300, 300)).toEqual({ sx: 0, sy: 0, size: 300 })
   })
 })
 

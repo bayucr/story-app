@@ -58,7 +58,7 @@ export function AppShell({ route, onNavigate, profile, onCreate, creating = fals
                 )}
               >
                 {to === '/profile' ? (
-                  <Avatar name={profile.name} size={26} />
+                  <Avatar name={profile.name} src={profile.avatar} size={26} />
                 ) : (
                   <Icon className="size-6" strokeWidth={active ? 2.5 : 2} aria-hidden />
                 )}
@@ -119,7 +119,7 @@ export function AppShell({ route, onNavigate, profile, onCreate, creating = fals
                 )}
               >
                 {to === '/profile' ? (
-                  <Avatar name={profile.name} size={26} />
+                  <Avatar name={profile.name} src={profile.avatar} size={26} />
                 ) : (
                   <Icon className="size-6" strokeWidth={active ? 2.5 : 2} aria-hidden />
                 )}

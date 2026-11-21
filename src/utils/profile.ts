@@ -2,11 +2,24 @@ export const PROFILE_KEY = 'profile'
 export const MAX_USERNAME_LENGTH = 30
 export const MAX_NAME_LENGTH = 40
 export const MAX_BIO_LENGTH = 150
+/** Upper bound for a stored avatar data URL (a 256x256 JPEG is normally 15-25 KB). */
+export const MAX_AVATAR_LENGTH = 150_000
 
 export interface Profile {
   username: string
   name: string
   bio: string
+  /** Optional profile photo as a base64 JPEG data URL */
+  avatar?: string
+}
+
+/** Accepts only reasonably sized image data URLs. */
+export function sanitizeAvatar(value: unknown): string | undefined {
+  return typeof value === 'string' &&
+    value.startsWith('data:image/') &&
+    value.length <= MAX_AVATAR_LENGTH
+    ? value
+    : undefined
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -28,10 +41,12 @@ export function normalizeProfile(input: Partial<Profile>): Profile {
   const username = sanitizeUsername(input.username ?? '')
   const name = (input.name ?? '').trim().slice(0, MAX_NAME_LENGTH)
   const bio = (input.bio ?? '').trim().slice(0, MAX_BIO_LENGTH)
+  const avatar = sanitizeAvatar(input.avatar)
   return {
     username: username || DEFAULT_PROFILE.username,
     name: name || DEFAULT_PROFILE.name,
     bio,
+    ...(avatar ? { avatar } : {}),
   }
 }
 
@@ -50,6 +65,7 @@ export function loadProfile(): Profile {
       username: typeof v.username === 'string' ? v.username : undefined,
       name: typeof v.name === 'string' ? v.name : undefined,
       bio: typeof v.bio === 'string' ? v.bio : undefined,
+      avatar: sanitizeAvatar(v.avatar),
     })
   } catch {
     try {

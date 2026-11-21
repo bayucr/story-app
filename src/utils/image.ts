@@ -31,6 +31,23 @@ export function fitWithin(
   }
 }
 
+function assertImageFile(file: File): void {
+  if (!file.type.startsWith('image/')) {
+    throw new ImageError('Please choose an image file.')
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    throw new ImageError('Image is too large. Please choose one under 15 MB.')
+  }
+}
+
+export const AVATAR_SIZE = 256
+
+/** Largest centered square inside width x height (center crop). */
+export function coverCrop(width: number, height: number): { sx: number; sy: number; size: number } {
+  const size = Math.min(width, height)
+  return { sx: Math.floor((width - size) / 2), sy: Math.floor((height - size) / 2), size }
+}
+
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
@@ -55,12 +72,7 @@ interface ImageOptions {
 
 /** Validates, resizes and converts an image file to a base64 JPEG data URL. */
 async function fileToImage(file: File, options: ImageOptions): Promise<string> {
-  if (!file.type.startsWith('image/')) {
-    throw new ImageError('Please choose an image file.')
-  }
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    throw new ImageError('Image is too large. Please choose one under 15 MB.')
-  }
+  assertImageFile(file)
 
   const img = await loadImage(file)
   const { width, height } = fitWithin(
@@ -94,6 +106,27 @@ export function fileToStoryImage(file: File): Promise<string> {
     maxHeight: MAX_IMAGE_HEIGHT,
     quality: JPEG_QUALITY,
   })
+}
+
+/** Profile photo: centered square crop, 256x256, JPEG quality 0.8. */
+export async function fileToAvatarImage(file: File): Promise<string> {
+  assertImageFile(file)
+  const img = await loadImage(file)
+  if (!img.naturalWidth || !img.naturalHeight) {
+    throw new ImageError('Could not read this image. Try a different file.')
+  }
+  const { sx, sy, size } = coverCrop(img.naturalWidth, img.naturalHeight)
+  const target = Math.min(AVATAR_SIZE, size)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = target
+  canvas.height = target
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new ImageError('Your browser cannot process images.')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, target, target)
+  ctx.drawImage(img, sx, sy, size, size, 0, 0, target, target)
+  return canvas.toDataURL('image/jpeg', JPEG_QUALITY)
 }
 
 /** Post image: smaller (max 720x1280, JPEG quality 0.7) to fit in localStorage. */
