@@ -254,17 +254,29 @@ export function StoryViewer({ stories, profile, startIndex, onClose, onView, onD
         onTap={handleTap}
       >
         <AnimatePresence mode="popLayout" initial={false}>
-          <motion.img
+          <motion.div
             key={story.id}
-            src={story.image}
-            alt={story.caption ? `Story photo: ${story.caption}` : 'Story photo'}
-            draggable={false}
-            className="absolute inset-0 size-full object-contain"
+            className="absolute inset-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-          />
+          >
+            {/* Blurred backdrop fills the empty space around non-9:16 images */}
+            <img
+              src={story.image}
+              alt=""
+              aria-hidden
+              draggable={false}
+              className="absolute inset-0 size-full scale-125 object-cover blur-2xl brightness-50"
+            />
+            <img
+              src={story.image}
+              alt={story.caption ? `Story photo: ${story.caption}` : 'Story photo'}
+              draggable={false}
+              className="relative size-full object-contain"
+            />
+          </motion.div>
         </AnimatePresence>
 
         {/* Screen reader announcement when the story changes */}
