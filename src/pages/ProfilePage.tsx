@@ -4,6 +4,7 @@ import { Avatar } from '@/components/Avatar'
 import { CircleDashed } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
 import { PostGrid } from '@/components/PostGrid'
+import { StorageMeter } from '@/components/StorageMeter'
 import { StoryGrid } from '@/components/StoryGrid'
 import { cn } from '@/utils/cn'
 import { fileToAvatarImage, getImageErrorMessage } from '@/utils/image'
@@ -214,6 +215,8 @@ export function ProfilePage({
           </div>
         </form>
       )}
+
+      <StorageMeter stories={stories} posts={posts} profile={profile} />
 
       <div className="border-t border-neutral-800">
         <div
