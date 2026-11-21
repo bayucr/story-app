@@ -6,7 +6,7 @@ import { Avatar } from './Avatar'
 import type { Profile } from '@/utils/profile'
 import { STORY_DURATION_MS, type Story } from '@/types'
 import { cn } from '@/utils/cn'
-import { timeAgo, timeLeft } from '@/utils/time'
+import { expiryLabel, timeAgo } from '@/utils/time'
 
 interface StoryViewerProps {
   stories: Story[]
@@ -309,7 +309,7 @@ export function StoryViewer({ stories, profile, startIndex, onClose, onView, onD
                   <span className="truncate text-sm font-semibold">{profile.username}</span>
                   <span className="shrink-0 text-sm text-white/70">{timeAgo(story.createdAt)}</span>
                 </div>
-                <span className="text-xs text-white/70">Disappears in {timeLeft(story.expiresAt).replace(' left', '')}</span>
+                <span className="text-xs text-white/70">{expiryLabel(story.expiresAt)}</span>
               </div>
             </div>
             <div className="pointer-events-auto flex items-center gap-1">

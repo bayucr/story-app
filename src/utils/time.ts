@@ -8,6 +8,12 @@ export function timeLeft(expiresAt: number, now: number = Date.now()): string {
   return m === 0 ? `${h}h left` : `${h}h ${m}m left`
 }
 
+/** Full sentence for expiry, e.g. "Disappears in 5h 12m" or "Expiring soon". */
+export function expiryLabel(expiresAt: number, now: number = Date.now()): string {
+  const left = timeLeft(expiresAt, now)
+  return left === 'Expiring' ? 'Expiring soon' : `Disappears in ${left.replace(' left', '')}`
+}
+
 /** Human-friendly relative time, e.g. "Just now", "12m ago", "3h ago". */
 export function timeAgo(createdAt: number, now: number = Date.now()): string {
   const minutes = Math.max(0, Math.floor((now - createdAt) / 60_000))

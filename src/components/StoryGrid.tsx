@@ -31,7 +31,9 @@ export function StoryGrid({ stories, viewedIds, onOpen }: StoryGridProps) {
           {count} active {count === 1 ? 'story' : 'stories'}
         </h1>
         <p className="text-xs text-neutral-400">
-          Next one disappears in {timeLeft(nextExpiry, now).replace(' left', '')}
+          {timeLeft(nextExpiry, now) === 'Expiring'
+            ? 'Next one expires soon'
+            : `Next one disappears in ${timeLeft(nextExpiry, now).replace(' left', '')}`}
         </p>
       </div>
 
