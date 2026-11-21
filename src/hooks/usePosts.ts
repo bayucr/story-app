@@ -4,7 +4,9 @@ import {
   cleanupOrphanImages,
   createPost,
   deletePost,
+  loadPostImage,
   loadPosts,
+  restorePost as persistRestore,
   savePost,
   updatePost as persistUpdate,
   type PostSaveResult,
@@ -14,6 +16,17 @@ function loadInitial(): Post[] {
   cleanupOrphanImages()
   return loadPosts()
 }
+
+/** Everything needed to bring a deleted post back (used by undo). */
+export interface DeletedPost {
+  post: Post
+  image: string
+  index: number
+}
+
+export type RemovePostResult =
+  | { ok: true; deleted: DeletedPost | null }
+  | { ok: false; reason: 'quota' | 'unavailable' | 'limit' }
 
 export function usePosts() {
   const [posts, setPosts] = useState<Post[]>(loadInitial)
@@ -46,11 +59,24 @@ export function usePosts() {
     return result
   }, [])
 
-  const removePost = useCallback((id: string): PostSaveResult => {
+  /** Deletes a post and returns a snapshot so the caller can offer undo. */
+  const removePost = useCallback((id: string): RemovePostResult => {
+    const index = postsRef.current.findIndex((p) => p.id === id)
+    const post = postsRef.current[index]
+    // Read the image before it is removed from storage.
+    const image = post ? loadPostImage(id) : null
     const result = deletePost(id)
-    if (result.ok) setPosts(postsRef.current.filter((p) => p.id !== id))
+    if (!result.ok) return result
+    setPosts(postsRef.current.filter((p) => p.id !== id))
+    return { ok: true, deleted: post && image ? { post, image, index } : null }
+  }, [])
+
+  /** Puts a deleted post back at its old position (undo). */
+  const restorePost = useCallback((deleted: DeletedPost): PostSaveResult => {
+    const result = persistRestore(deleted.post, deleted.image, deleted.index)
+    if (result.ok) setPosts(loadPosts())
     return result
   }, [])
 
-  return { posts, addPost, updatePost, removePost }
+  return { posts, addPost, updatePost, removePost, restorePost }
 }

@@ -2,18 +2,28 @@ import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import type { Post } from '@/types'
 import { fileToPostImage, getImageErrorMessage } from '@/utils/image'
+import type { DeletedPost, RemovePostResult } from '@/hooks/usePosts'
 import type { PostSaveResult } from '@/utils/postStorage'
 
 interface PostActionsDeps {
   addPost: (image: string, caption: string) => PostSaveResult
   updatePost: (post: Post) => PostSaveResult
-  removePost: (id: string) => PostSaveResult
+  removePost: (id: string) => RemovePostResult
+  restorePost: (deleted: DeletedPost) => PostSaveResult
   /** Called after a post is shared successfully (e.g. to navigate to the feed). */
   onShared?: () => void
 }
 
 /** Post creation flow (pick image, draft, share), editing and deletion, with user feedback. */
-export function usePostActions({ addPost, updatePost, removePost, onShared }: PostActionsDeps) {
+const UNDO_DURATION_MS = 6000
+
+export function usePostActions({
+  addPost,
+  updatePost,
+  removePost,
+  restorePost,
+  onShared,
+}: PostActionsDeps) {
   const [creating, setCreating] = useState(false)
   const [draft, setDraft] = useState<string | null>(null)
 
@@ -62,7 +72,21 @@ export function usePostActions({ addPost, updatePost, removePost, onShared }: Po
   const remove = (id: string) => {
     const result = removePost(id)
     if (result.ok) {
-      toast.success('Post deleted.')
+      const deleted = result.deleted
+      toast.success('Post deleted.', {
+        duration: UNDO_DURATION_MS,
+        action: deleted
+          ? {
+              label: 'Undo',
+              onClick: () => {
+                const restored = restorePost(deleted)
+                if (restored.ok) toast.success('Post restored.')
+                else if (restored.reason === 'limit') toast.error('Could not restore: post limit reached.')
+                else toast.error('Could not restore the post. Storage may be full.')
+              },
+            }
+          : undefined,
+      })
     } else {
       toast.error('Could not delete the post. Local storage is unavailable.')
     }

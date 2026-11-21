@@ -24,12 +24,10 @@ const CLOSE_DISTANCE = 120
 export function StoryViewer({ stories, profile, startIndex, onClose, onView, onDelete }: StoryViewerProps) {
   const [index, setIndex] = useState(startIndex)
   const [progress, setProgress] = useState(0)
-  const [confirming, setConfirming] = useState(false)
   const [userPaused, setUserPaused] = useState(false)
   const userPausedRef = useRef(false)
   const dialogRef = useRef<HTMLDivElement>(null)
   useFocusTrap(dialogRef)
-  const confirmingRef = useRef(false)
   const hiddenRef = useRef(false)
   const resyncRef = useRef(false)
 
@@ -72,13 +70,6 @@ export function StoryViewer({ stories, profile, startIndex, onClose, onView, onD
   useEffect(() => {
     if (storyId) onView(storyId)
   }, [storyId, onView])
-
-  // Cancel a pending delete confirmation when the visible story changes.
-  useEffect(() => {
-    confirmingRef.current = false
-    pausedRef.current = false
-    setConfirming(false)
-  }, [storyId])
 
   // Progress timer + auto-advance.
   useEffect(() => {
@@ -170,27 +161,12 @@ export function StoryViewer({ stories, profile, startIndex, onClose, onView, onD
     pausedRef.current = true
   }
   const resume = () => {
-    pausedRef.current = confirmingRef.current
-  }
-
-  const requestDelete = () => {
-    confirmingRef.current = true
-    pausedRef.current = true
-    setConfirming(true)
-  }
-
-  const cancelDelete = () => {
-    confirmingRef.current = false
     pausedRef.current = false
-    setConfirming(false)
   }
 
-  const confirmDelete = () => {
-    if (!story) return
-    confirmingRef.current = false
-    pausedRef.current = false
-    setConfirming(false)
-    onDelete(story.id)
+  // Deleting is immediate; the toast offers Undo.
+  const deleteCurrent = () => {
+    if (story) onDelete(story.id)
   }
 
   const handleDragEnd = (_: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => {
@@ -369,41 +345,15 @@ export function StoryViewer({ stories, profile, startIndex, onClose, onView, onD
 
         {/* Delete controls */}
         <div className="safe-bottom pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">
-          {confirming ? (
-            <div
-              role="alertdialog"
-              aria-label="Delete this story?"
-              className="pointer-events-auto flex items-center gap-2 rounded-full bg-neutral-900/90 py-1.5 pr-1.5 pl-4 text-sm text-white backdrop-blur"
-              onPointerDown={guardTap}
-            >
-              <span>Delete this story?</span>
-              <button
-                type="button"
-                onClick={cancelDelete}
-                className="rounded-full px-3 py-1.5 font-medium text-neutral-200 transition hover:bg-white/15"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                autoFocus
-                onClick={confirmDelete}
-                className="rounded-full bg-red-600 px-3 py-1.5 font-medium text-white transition hover:bg-red-500"
-              >
-                Delete
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              aria-label="Delete story"
-              onPointerDown={guardTap}
-              onClick={requestDelete}
-              className="pointer-events-auto rounded-full bg-black/40 p-2.5 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
-            >
-              <Trash2 className="size-5" aria-hidden />
-            </button>
-          )}
+          <button
+            type="button"
+            aria-label="Delete story"
+            onPointerDown={guardTap}
+            onClick={deleteCurrent}
+            className="pointer-events-auto rounded-full bg-black/40 p-2.5 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
+          >
+            <Trash2 className="size-5" aria-hidden />
+          </button>
         </div>
       </motion.div>
     </motion.div>

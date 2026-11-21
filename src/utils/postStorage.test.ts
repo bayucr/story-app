@@ -6,6 +6,7 @@ import {
   deletePost,
   loadPostImage,
   loadPosts,
+  restorePost,
   savePost,
   updatePost,
 } from './postStorage'
@@ -100,6 +101,33 @@ describe('postStorage', () => {
     expect(deletePost(p.id)).toEqual({ ok: true })
     expect(loadPosts()).toEqual([])
     expect(loadPostImage(p.id)).toBeNull()
+  })
+
+  it('restores a deleted post with its image at the old position', () => {
+    const a = createPost('a', 1)
+    const b = createPost('b', 2)
+    const c = createPost('c', 3)
+    savePost(a, IMG)
+    savePost(b, IMG)
+    savePost(c, IMG)
+    // stored order: c, b, a
+    deletePost(b.id)
+    expect(loadPosts().map((p) => p.caption)).toEqual(['c', 'a'])
+    expect(restorePost(b, IMG, 1)).toEqual({ ok: true })
+    expect(loadPosts().map((p) => p.caption)).toEqual(['c', 'b', 'a'])
+    expect(loadPostImage(b.id)).toBe(IMG)
+  })
+
+  it('does not duplicate a post that already exists when restoring', () => {
+    const p = createPost('x', 1)
+    savePost(p, IMG)
+    expect(restorePost(p, IMG, 0)).toEqual({ ok: true })
+    expect(loadPosts()).toHaveLength(1)
+  })
+
+  it('refuses to restore beyond the post limit', () => {
+    for (let i = 0; i < MAX_POSTS; i++) savePost(createPost(`p${i}`, i), IMG)
+    expect(restorePost(createPost('extra', 999), IMG, 0)).toEqual({ ok: false, reason: 'limit' })
   })
 
   it('cleans up orphan images', () => {

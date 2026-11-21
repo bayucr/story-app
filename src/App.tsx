@@ -18,9 +18,9 @@ import { MAX_POST_CAPTION_LENGTH } from '@/types'
 
 export default function App() {
   // Data
-  const { stories, addStory, removeStory } = useStories()
+  const { stories, addStory, removeStory, restoreStory } = useStories()
   const { viewedIds, markViewed } = useViewedStories(stories)
-  const { posts, addPost, updatePost, removePost } = usePosts()
+  const { posts, addPost, updatePost, removePost, restorePost } = usePosts()
   const { profile, updateProfile } = useProfile()
 
   // Routing
@@ -38,13 +38,14 @@ export default function App() {
   const closePost = useCallback(() => setOpenPostId(null), [])
 
   // Story creation and deletion
-  const storyActions = useStoryActions({ addStory, removeStory })
+  const storyActions = useStoryActions({ addStory, removeStory, restoreStory })
 
   // Post creation, editing and deletion
   const postActions = usePostActions({
     addPost,
     updatePost,
     removePost,
+    restorePost,
     onShared: () => {
       if (route !== '/') navigate('/')
     },

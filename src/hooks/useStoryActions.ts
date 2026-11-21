@@ -1,15 +1,19 @@
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
+import type { DeletedStory, RemoveStoryResult } from '@/hooks/useStories'
 import type { SaveResult } from '@/utils/storage'
 import { fileToStoryImage, getImageErrorMessage } from '@/utils/image'
 
 interface StoryActionsDeps {
   addStory: (image: string, caption?: string) => SaveResult
-  removeStory: (id: string) => SaveResult
+  removeStory: (id: string) => RemoveStoryResult
+  restoreStory: (deleted: DeletedStory) => SaveResult
 }
 
+const UNDO_DURATION_MS = 6000
+
 /** Story creation flow (pick image, draft, publish) and story deletion, with user feedback. */
-export function useStoryActions({ addStory, removeStory }: StoryActionsDeps) {
+export function useStoryActions({ addStory, removeStory, restoreStory }: StoryActionsDeps) {
   const [uploading, setUploading] = useState(false)
   const [draft, setDraft] = useState<string | null>(null)
 
@@ -44,7 +48,20 @@ export function useStoryActions({ addStory, removeStory }: StoryActionsDeps) {
   const deleteStory = (id: string) => {
     const result = removeStory(id)
     if (result.ok) {
-      toast.success('Story deleted.')
+      const deleted = result.deleted
+      toast.success('Story deleted.', {
+        duration: UNDO_DURATION_MS,
+        action: deleted
+          ? {
+              label: 'Undo',
+              onClick: () => {
+                const restored = restoreStory(deleted)
+                if (restored.ok) toast.success('Story restored.')
+                else toast.error('Could not restore the story.')
+              },
+            }
+          : undefined,
+      })
     } else {
       toast.error('Could not delete the story. Local storage is unavailable.')
     }

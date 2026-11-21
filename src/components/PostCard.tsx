@@ -20,7 +20,6 @@ const DOUBLE_TAP_MS = 300
 
 export function PostCard({ post, profile, onDelete, onUpdate }: PostCardProps) {
   const image = useMemo(() => loadPostImage(post.id), [post.id])
-  const [confirming, setConfirming] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [comment, setComment] = useState('')
   const [heartBurst, setHeartBurst] = useState(0)
@@ -62,34 +61,14 @@ export function PostCard({ post, profile, onDelete, onUpdate }: PostCardProps) {
           <span className="truncate text-sm font-semibold">{profile.username}</span>
           <span className="shrink-0 text-sm text-neutral-500">{timeAgo(post.createdAt)}</span>
         </div>
-        {confirming ? (
-          <div role="alertdialog" aria-label="Delete this post?" className="flex items-center gap-1 text-sm">
-            <button
-              type="button"
-              onClick={() => setConfirming(false)}
-              className="rounded-full px-3 py-1 text-neutral-300 transition hover:bg-white/10"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              autoFocus
-              onClick={() => onDelete(post.id)}
-              className="rounded-full bg-red-600 px-3 py-1 font-medium text-white transition hover:bg-red-500"
-            >
-              Delete
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            aria-label="Delete post"
-            onClick={() => setConfirming(true)}
-            className="rounded-full p-1.5 text-neutral-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-ig-pink"
-          >
-            <Trash2 className="size-5" aria-hidden />
-          </button>
-        )}
+        <button
+          type="button"
+          aria-label="Delete post"
+          onClick={() => onDelete(post.id)}
+          className="rounded-full p-1.5 text-neutral-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-ig-pink"
+        >
+          <Trash2 className="size-5" aria-hidden />
+        </button>
       </header>
 
       <div className="relative select-none" onClick={handleImageTap}>

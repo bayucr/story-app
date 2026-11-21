@@ -47,6 +47,24 @@ function isQuotaError(err: unknown): boolean {
   )
 }
 
+/**
+ * Puts a previously deleted story back at its old position (used by undo).
+ * Returns the save result and the resulting list (unchanged when restoring failed or the story expired).
+ */
+export function restoreStory(
+  story: Story,
+  index: number,
+  now: number = Date.now(),
+): { result: SaveResult; stories: Story[] } {
+  const existing = loadStories()
+  if (existing.some((s) => s.id === story.id)) return { result: { ok: true }, stories: existing }
+  if (story.expiresAt <= now) return { result: { ok: false, reason: 'unavailable' }, stories: existing }
+  const next = [...existing]
+  next.splice(Math.min(Math.max(index, 0), next.length), 0, story)
+  const result = saveStories(next)
+  return { result, stories: result.ok ? next : existing }
+}
+
 /** Persists stories to localStorage and reports quota problems instead of throwing. */
 export function saveStories(stories: Story[]): SaveResult {
   try {

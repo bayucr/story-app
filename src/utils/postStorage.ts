@@ -139,6 +139,34 @@ export function deletePost(id: string): PostSaveResult {
   return result
 }
 
+/**
+ * Puts a previously deleted post back (image first, then metadata) at its old position.
+ * Used by undo. Rolls the image back if the metadata write fails.
+ */
+export function restorePost(post: Post, image: string, index: number): PostSaveResult {
+  const existing = loadPosts()
+  if (existing.some((p) => p.id === post.id)) return { ok: true }
+  if (existing.length >= MAX_POSTS) return { ok: false, reason: 'limit' }
+
+  try {
+    localStorage.setItem(imageKey(post.id), image)
+  } catch (err) {
+    return { ok: false, reason: isQuotaError(err) ? 'quota' : 'unavailable' }
+  }
+
+  const next = [...existing]
+  next.splice(Math.min(Math.max(index, 0), next.length), 0, post)
+  const result = writePosts(next)
+  if (!result.ok) {
+    try {
+      localStorage.removeItem(imageKey(post.id))
+    } catch {
+      /* nothing more to do */
+    }
+  }
+  return result
+}
+
 /** Removes post images that no longer have metadata (e.g. after an interrupted write). */
 export function cleanupOrphanImages(): number {
   try {
