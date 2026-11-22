@@ -1,9 +1,16 @@
 import { useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Bookmark, Heart, MessageCircle, Trash2, X } from 'lucide-react'
+import { Bookmark, Heart, MessageCircle, Pencil, Trash2, X } from 'lucide-react'
 import { Avatar } from './Avatar'
-import { MAX_COMMENT_LENGTH, type Post } from '@/types'
-import { addComment, likePost, removeComment, toggleLike, toggleSave } from '@/utils/postActions'
+import { MAX_COMMENT_LENGTH, MAX_POST_CAPTION_LENGTH, type Post } from '@/types'
+import {
+  addComment,
+  editCaption,
+  likePost,
+  removeComment,
+  toggleLike,
+  toggleSave,
+} from '@/utils/postActions'
 import { loadPostImage } from '@/utils/postStorage'
 import { timeAgo } from '@/utils/time'
 import { cn } from '@/utils/cn'
@@ -23,6 +30,8 @@ export function PostCard({ post, profile, onDelete, onUpdate }: PostCardProps) {
   const [showComments, setShowComments] = useState(false)
   const [comment, setComment] = useState('')
   const [heartBurst, setHeartBurst] = useState(0)
+  const [editing, setEditing] = useState(false)
+  const [captionDraft, setCaptionDraft] = useState('')
   const lastTapRef = useRef(0)
   const commentInputRef = useRef<HTMLInputElement>(null)
 
@@ -45,6 +54,17 @@ export function PostCard({ post, profile, onDelete, onUpdate }: PostCardProps) {
     setComment('')
   }
 
+  const startEditCaption = () => {
+    setCaptionDraft(post.caption)
+    setEditing(true)
+  }
+
+  const saveCaption = () => {
+    const next = editCaption(post, captionDraft)
+    if (next !== post) onUpdate(next)
+    setEditing(false)
+  }
+
   const openComments = () => {
     setShowComments(true)
     window.setTimeout(() => commentInputRef.current?.focus(), 0)
@@ -61,6 +81,15 @@ export function PostCard({ post, profile, onDelete, onUpdate }: PostCardProps) {
           <span className="truncate text-sm font-semibold">{profile.username}</span>
           <span className="shrink-0 text-sm text-neutral-500">{timeAgo(post.createdAt)}</span>
         </div>
+        <button
+          type="button"
+          aria-label="Edit caption"
+          onClick={startEditCaption}
+          disabled={editing}
+          className="rounded-full p-1.5 text-neutral-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-ig-pink disabled:opacity-40"
+        >
+          <Pencil className="size-5" aria-hidden />
+        </button>
         <button
           type="button"
           aria-label="Delete post"
@@ -132,11 +161,64 @@ export function PostCard({ post, profile, onDelete, onUpdate }: PostCardProps) {
           {post.likes} {post.likes === 1 ? 'like' : 'likes'}
         </p>
 
-        {post.caption && (
-          <p className="mt-1 break-words whitespace-pre-wrap">
-            <span className="mr-2 font-semibold">{profile.username}</span>
-            {post.caption}
-          </p>
+        {editing ? (
+          <form
+            className="mt-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              saveCaption()
+            }}
+          >
+            <label htmlFor={`caption-${post.id}`} className="sr-only">
+              Caption
+            </label>
+            <textarea
+              id={`caption-${post.id}`}
+              value={captionDraft}
+              maxLength={MAX_POST_CAPTION_LENGTH}
+              rows={3}
+              autoFocus
+              placeholder="Write a caption..."
+              onChange={(e) => setCaptionDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.stopPropagation()
+                  setEditing(false)
+                } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault()
+                  saveCaption()
+                }
+              }}
+              className="w-full resize-none rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-ig-pink focus:outline-none"
+            />
+            <div className="mt-1 flex items-center justify-between">
+              <span className="text-xs text-neutral-500">
+                {MAX_POST_CAPTION_LENGTH - captionDraft.length} left
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="rounded-full px-3 py-1 text-sm text-neutral-300 transition hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-full bg-ig-pink px-4 py-1 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </form>
+        ) : (
+          post.caption && (
+            <p className="mt-1 break-words whitespace-pre-wrap">
+              <span className="mr-2 font-semibold">{profile.username}</span>
+              {post.caption}
+            </p>
+          )
         )}
 
         {post.comments.length > 0 && !showComments && (

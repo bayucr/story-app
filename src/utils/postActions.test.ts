@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_COMMENT_LENGTH } from '@/types'
+import { MAX_COMMENT_LENGTH, MAX_POST_CAPTION_LENGTH } from '@/types'
 import { createPost } from './postStorage'
-import { addComment, likePost, removeComment, toggleLike, toggleSave } from './postActions'
+import { addComment, editCaption, likePost, removeComment, toggleLike, toggleSave } from './postActions'
 
 const base = () => createPost('hello', 1)
 
@@ -48,6 +48,24 @@ describe('postActions', () => {
   it('truncates long comments', () => {
     const next = addComment(base(), 'a'.repeat(1000), 1)
     expect(next?.comments[0].text.length).toBe(MAX_COMMENT_LENGTH)
+  })
+
+  it('edits the caption with trimming and without mutating the original', () => {
+    const p = base()
+    const next = editCaption(p, '  new caption  ')
+    expect(next.caption).toBe('new caption')
+    expect(p.caption).toBe('hello')
+  })
+
+  it('returns the same post when the caption is unchanged', () => {
+    const p = base()
+    expect(editCaption(p, 'hello')).toBe(p)
+    expect(editCaption(p, '  hello  ')).toBe(p)
+  })
+
+  it('allows clearing the caption and truncates long ones', () => {
+    expect(editCaption(base(), '   ').caption).toBe('')
+    expect(editCaption(base(), 'a'.repeat(900)).caption.length).toBe(MAX_POST_CAPTION_LENGTH)
   })
 
   it('removes a comment by id', () => {

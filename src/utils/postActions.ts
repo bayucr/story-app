@@ -1,4 +1,4 @@
-import { MAX_COMMENT_LENGTH, type Comment, type Post } from '@/types'
+import { MAX_COMMENT_LENGTH, MAX_POST_CAPTION_LENGTH, type Comment, type Post } from '@/types'
 
 /** Toggles like. Likes never go below zero. */
 export function toggleLike(post: Post): Post {
@@ -33,4 +33,10 @@ export function addComment(post: Post, text: string, now: number = Date.now()): 
 
 export function removeComment(post: Post, commentId: string): Post {
   return { ...post, comments: post.comments.filter((c) => c.id !== commentId) }
+}
+
+/** Replaces the caption (trimmed, truncated). Returns the same post when nothing changed. */
+export function editCaption(post: Post, caption: string): Post {
+  const next = caption.trim().slice(0, MAX_POST_CAPTION_LENGTH)
+  return next === post.caption ? post : { ...post, caption: next }
 }
