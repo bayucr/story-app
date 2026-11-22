@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion, type PanInfo } from 'motion/react'
-import { ChevronLeft, ChevronRight, Pause, Play, Trash2, X } from 'lucide-react'
+import { motion, type PanInfo } from 'motion/react'
+import { StoryFooter } from './story/StoryFooter'
+import { StoryHeader } from './story/StoryHeader'
+import { StoryImage } from './story/StoryImage'
+import { StoryNavArrows } from './story/StoryNavArrows'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
-import { Avatar } from './Avatar'
-import type { Profile } from '@/utils/profile'
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll'
+import { useStoryKeyboard } from '@/hooks/useStoryKeyboard'
+import { useStoryTimer } from '@/hooks/useStoryTimer'
 import { STORY_DURATION_MS, type Story } from '@/types'
 import { cn } from '@/utils/cn'
-import { expiryLabel, timeAgo } from '@/utils/time'
+import type { Profile } from '@/utils/profile'
+import { timeAgo } from '@/utils/time'
 
 interface StoryViewerProps {
   stories: Story[]
@@ -20,46 +25,50 @@ interface StoryViewerProps {
 const SWIPE_DISTANCE = 60
 const SWIPE_VELOCITY = 500
 const CLOSE_DISTANCE = 120
+/** Window in which a tap right after pressing a control is ignored by the tap handler. */
+const CONTROL_TAP_GUARD_MS = 400
 
 export function StoryViewer({ stories, profile, startIndex, onClose, onView, onDelete }: StoryViewerProps) {
   const [index, setIndex] = useState(startIndex)
-  const [progress, setProgress] = useState(0)
-  const [userPaused, setUserPaused] = useState(false)
-  const userPausedRef = useRef(false)
   const dialogRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   useFocusTrap(dialogRef)
-  const hiddenRef = useRef(false)
-  const resyncRef = useRef(false)
+  useLockBodyScroll()
 
   const safeIndex = Math.min(index, stories.length - 1)
   const story: Story | undefined = stories[safeIndex]
   const storyId = story?.id
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const pausedRef = useRef(false)
-  const elapsedRef = useRef(0)
+  // Latest values for callbacks that must keep a stable identity.
   const indexRef = useRef(safeIndex)
   const countRef = useRef(stories.length)
   indexRef.current = safeIndex
   countRef.current = stories.length
-
   const closeRef = useRef(onClose)
   closeRef.current = onClose
+
+  const timerRestartRef = useRef<() => void>(() => {})
 
   /** Moves by delta stories. Past the last story closes; before the first restarts it. */
   const go = useCallback((delta: number) => {
     const target = indexRef.current + delta
-    if (target >= countRef.current) {
-      closeRef.current()
-    } else if (target < 0) {
-      elapsedRef.current = 0
-    } else {
-      setIndex(target)
-    }
+    if (target >= countRef.current) closeRef.current()
+    else if (target < 0) timerRestartRef.current()
+    else setIndex(target)
   }, [])
 
-  const goRef = useRef(go)
-  goRef.current = go
+  const next = useCallback(() => go(1), [go])
+  const previous = useCallback(() => go(-1), [go])
+
+  const timer = useStoryTimer({ storyId, durationMs: STORY_DURATION_MS, onComplete: next })
+  timerRestartRef.current = timer.restart
+
+  useStoryKeyboard({
+    onNext: next,
+    onPrevious: previous,
+    onClose,
+    onTogglePause: timer.toggleUserPause,
+  })
 
   // Close when every story has expired while viewing.
   useEffect(() => {
@@ -71,82 +80,6 @@ export function StoryViewer({ stories, profile, startIndex, onClose, onView, onD
     if (storyId) onView(storyId)
   }, [storyId, onView])
 
-  // Progress timer + auto-advance.
-  useEffect(() => {
-    if (!storyId) return
-    elapsedRef.current = 0
-    setProgress(0)
-    let last = performance.now()
-    let raf = 0
-    const tick = (now: number) => {
-      // Cap dt so a long frame never skips ahead; after the tab was hidden,
-      // restart the clock so the time spent away is not counted.
-      let dt = Math.min(now - last, 100)
-      if (resyncRef.current) {
-        resyncRef.current = false
-        dt = 0
-      }
-      last = now
-      if (!pausedRef.current && !hiddenRef.current && !userPausedRef.current) {
-        elapsedRef.current += dt
-      }
-      const p = Math.min(1, elapsedRef.current / STORY_DURATION_MS)
-      setProgress(p)
-      if (p >= 1) {
-        goRef.current(1)
-        return
-      }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [storyId])
-
-  // Keyboard controls.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      const typing = target?.tagName === 'TEXTAREA' || target?.tagName === 'INPUT'
-      if (e.key === 'ArrowRight') goRef.current(1)
-      else if (e.key === 'ArrowLeft') goRef.current(-1)
-      else if (e.key === 'Escape') closeRef.current()
-      else if (e.key === ' ' && !typing && target?.tagName !== 'BUTTON') {
-        e.preventDefault()
-        toggleUserPauseRef.current()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
-  // Pause while the tab is hidden and resume from the same position when it returns.
-  useEffect(() => {
-    const onVisibility = () => {
-      const hidden = document.visibilityState === 'hidden'
-      hiddenRef.current = hidden
-      if (!hidden) resyncRef.current = true
-    }
-    onVisibility()
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => document.removeEventListener('visibilitychange', onVisibility)
-  }, [])
-
-  // Lock page scroll while open.
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [])
-
-  const toggleUserPause = () => {
-    userPausedRef.current = !userPausedRef.current
-    setUserPaused(userPausedRef.current)
-  }
-  const toggleUserPauseRef = useRef(toggleUserPause)
-  toggleUserPauseRef.current = toggleUserPause
-
   /** Marks the current pointer gesture as started on a control so the tap handler ignores it. */
   const controlTapRef = useRef(false)
   const guardTap = (e: { stopPropagation: () => void }) => {
@@ -154,31 +87,19 @@ export function StoryViewer({ stories, profile, startIndex, onClose, onView, onD
     controlTapRef.current = true
     window.setTimeout(() => {
       controlTapRef.current = false
-    }, 400)
-  }
-
-  const pause = () => {
-    pausedRef.current = true
-  }
-  const resume = () => {
-    pausedRef.current = false
-  }
-
-  // Deleting is immediate; the toast offers Undo.
-  const deleteCurrent = () => {
-    if (story) onDelete(story.id)
+    }, CONTROL_TAP_GUARD_MS)
   }
 
   const handleDragEnd = (_: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => {
-    resume()
+    timer.release()
     const { offset, velocity } = info
     const vertical = Math.abs(offset.y) > Math.abs(offset.x)
     if (vertical) {
       if (offset.y > CLOSE_DISTANCE || velocity.y > SWIPE_VELOCITY) onClose()
       return
     }
-    if (offset.x < -SWIPE_DISTANCE || velocity.x < -SWIPE_VELOCITY) go(1)
-    else if (offset.x > SWIPE_DISTANCE || velocity.x > SWIPE_VELOCITY) go(-1)
+    if (offset.x < -SWIPE_DISTANCE || velocity.x < -SWIPE_VELOCITY) next()
+    else if (offset.x > SWIPE_DISTANCE || velocity.x > SWIPE_VELOCITY) previous()
   }
 
   const handleTap = (event: MouseEvent | TouchEvent | PointerEvent, info: { point: { x: number } }) => {
@@ -222,139 +143,41 @@ export function StoryViewer({ stories, profile, startIndex, onClose, onView, onD
         dragDirectionLock
         dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
         dragElastic={{ top: 0, bottom: 0.6, left: 0.25, right: 0.25 }}
-        onPointerDown={pause}
-        onPointerUp={resume}
-        onPointerCancel={resume}
-        onDragStart={pause}
+        onPointerDown={timer.hold}
+        onPointerUp={timer.release}
+        onPointerCancel={timer.release}
+        onDragStart={timer.hold}
         onDragEnd={handleDragEnd}
         onTap={handleTap}
       >
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
-            key={story.id}
-            className="absolute inset-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {/* Blurred backdrop fills the empty space around non-9:16 images */}
-            <img
-              src={story.image}
-              alt=""
-              aria-hidden
-              draggable={false}
-              className="absolute inset-0 size-full scale-125 object-cover blur-2xl brightness-50"
-            />
-            <img
-              src={story.image}
-              alt={story.caption ? `Story photo: ${story.caption}` : 'Story photo'}
-              draggable={false}
-              className="relative size-full object-contain"
-            />
-          </motion.div>
-        </AnimatePresence>
+        <StoryImage story={story} />
 
         {/* Screen reader announcement when the story changes */}
         <p className="sr-only" role="status" aria-live="polite">
           {`Story ${safeIndex + 1} of ${stories.length}, posted ${timeAgo(story.createdAt)}`}
         </p>
 
-        {/* Top gradient for readability */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />
+        <StoryHeader
+          stories={stories}
+          story={story}
+          index={safeIndex}
+          progress={timer.progress}
+          profile={profile}
+          userPaused={timer.userPaused}
+          onTogglePause={timer.toggleUserPause}
+          onClose={onClose}
+          guardTap={guardTap}
+        />
 
-        {/* Progress bars */}
-        <div className="safe-top pointer-events-none absolute inset-x-0 top-0 px-3 pt-3">
-          <div className="flex gap-1" aria-hidden>
-            {stories.map((s, i) => (
-              <div key={s.id} className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/30">
-                <div
-                  className="h-full origin-left rounded-full bg-white"
-                  style={{
-                    transform: `scaleX(${i < safeIndex ? 1 : i === safeIndex ? progress : 0})`,
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex items-center justify-between">
-            <div className="flex items-center gap-2.5 text-white drop-shadow">
-              <Avatar name={profile.name} src={profile.avatar} size={32} />
-              <div className="flex min-w-0 flex-col leading-tight">
-                <div className="flex items-baseline gap-2">
-                  <span className="truncate text-sm font-semibold">{profile.username}</span>
-                  <span className="shrink-0 text-sm text-white/70">{timeAgo(story.createdAt)}</span>
-                </div>
-                <span className="text-xs text-white/70">{expiryLabel(story.expiresAt)}</span>
-              </div>
-            </div>
-            <div className="pointer-events-auto flex items-center gap-1">
-            <button
-              type="button"
-              aria-label={userPaused ? 'Play story' : 'Pause story'}
-              aria-pressed={userPaused}
-              onPointerDown={guardTap}
-              onClick={toggleUserPause}
-              className="rounded-full p-1.5 text-white transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
-            >
-              {userPaused ? <Play className="size-6" aria-hidden /> : <Pause className="size-6" aria-hidden />}
-            </button>
-            <button
-              type="button"
-              aria-label="Close story"
-              onPointerDown={guardTap}
-              onClick={onClose}
-              className="pointer-events-auto rounded-full p-1.5 text-white transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
-            >
-              <X className="size-6" aria-hidden />
-            </button>
-            </div>
-          </div>
-        </div>
+        <StoryNavArrows
+          isFirst={safeIndex === 0}
+          isLast={safeIndex === stories.length - 1}
+          onPrevious={previous}
+          onNext={next}
+          guardTap={guardTap}
+        />
 
-        {/* Desktop navigation arrows (touch users swipe or tap) */}
-        {safeIndex > 0 && (
-          <button
-            type="button"
-            aria-label="Previous story"
-            onPointerDown={guardTap}
-            onClick={() => go(-1)}
-            className="absolute top-1/2 left-2 hidden -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white sm:block"
-          >
-            <ChevronLeft className="size-6" aria-hidden />
-          </button>
-        )}
-        <button
-          type="button"
-          aria-label={safeIndex === stories.length - 1 ? 'Close story viewer' : 'Next story'}
-          onPointerDown={guardTap}
-          onClick={() => go(1)}
-          className="absolute top-1/2 right-2 hidden -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white sm:block"
-        >
-          <ChevronRight className="size-6" aria-hidden />
-        </button>
-
-        {/* Caption */}
-        {story.caption && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-16 px-4 pr-16">
-            <p className="inline-block max-w-full rounded-xl bg-black/55 px-3 py-2 text-sm leading-snug break-words whitespace-pre-wrap text-white backdrop-blur-sm">
-              {story.caption}
-            </p>
-          </div>
-        )}
-
-        {/* Delete controls */}
-        <div className="safe-bottom pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">
-          <button
-            type="button"
-            aria-label="Delete story"
-            onPointerDown={guardTap}
-            onClick={deleteCurrent}
-            className="pointer-events-auto rounded-full bg-black/40 p-2.5 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
-          >
-            <Trash2 className="size-5" aria-hidden />
-          </button>
-        </div>
+        <StoryFooter story={story} onDelete={() => onDelete(story.id)} guardTap={guardTap} />
       </motion.div>
     </motion.div>
   )
